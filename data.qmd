@@ -1,5 +1,163 @@
 # Data
 
+The dataset we will be using for this project can be found here: <https://github.com/rfordatascience/tidytuesday/blob/main/data/2025/2025-08-26/readme.md>
+
 ## Description
 
+The data contains every song to ever top the Billboard Hot 100 between August 4, 1958 and January 11, 2025 and is compiled by Chris Dalla Riva as an accompaniment to his book “Uncharted Territory: What Numbers Tell Us about the Biggest Hit Songs and Ourselves” being published this November. The dataset itself contains data from multiple sources aside from the author, including BPM metrics provided by Spotify, genre details provided by Discogs, and other variables citing Tidal, Songview, and Fred Bronson’s “The Billboard Book of Number One” as sources.
+
+We chose this dataset specifically because it has numerous variables that will let us explore in depth the various relationships among musical, lyrical, and production characteristics between the top songs. We were also drawn to it because we both love music and wanted a personally engaging project. However, we spotted potential issues with the data. The “label” variable, for example, provides the name of the label under which the song was distributed. This could be a problem when looking at distribution of songs under certain labels over time, since businesses often experience rapid changes (e.g. maybe a label was acquired by another company, some labels could have gone through bankruptcy, some labels might have rebranded). Another potential issue is that there are multiple variables for song genre in the dataset, one assigned subjectively by the author, and one assigned by Discogs. This subjectivity poses a problem when looking at genre popularity over time.
+
 ## Missing value analysis
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+tuesdata <- tidytuesdayR::tt_load(2025, week = 34)
+
+billboard <- tuesdata$billboard
+topics <- tuesdata$topics
+```
+
+```{r}
+missing_proportions <- colMeans(is.na(billboard))
+print(missing_proportions)
+```
+
+### Observations
+
+There are only a few variables that have \>0.8 of its values missing:
+
+`featured_artists`, `talent_contestant`, `sound_effects`, `featured_in_a_then_contemporary_play`, `featured_in_a_then_contemporary_film`, `featured_in_a_then_contemporary_t_v_show`, `double_a_side`
+
+For these variables, it makes sense why so many of its values would be missing. Not every song would have a featured artist, or have the main artist be from a talent competition, etc. They are not missing because of corrupt data.
+
+**\[ACTION ITEM\] We can then exclude them from our research questions and provide short analyses for each of them based on their respective proportions of missing data instead.**
+
+The following variables have explanations in the documentation for its missing values
+
+1.   `bpm`, `energy`, `danceability`, `happiness`, `loudness_d_b`, `acousticness` –\> 0.0016
+
+These variables are taken from Spotify data, so they are presumably missing from the dataset because the data is not available through Spotify. Below, I have created a data frame containing rows missing the above Spotify variables. It looks like there are 2 songs responsible for these missing values: "Rock On" by Michael Damian and "Lately" by Divine.
+
+```{r}
+library(dplyr)
+
+spotify_missing <- billboard |>
+  filter(is.na(bpm) | is.na(energy) | is.na(danceability) | is.na(happiness) | is.na(loudness_d_b) | is.na(acousticness))
+
+spotify_missing
+```
+
+2.   `front_person_age`
+
+As per the data documentation, "If \[`front_person_age` is\] blank, then the age(s) could not be accurately located or age did not make sense (i.e., the band was animated)".
+
+```{r}
+front_person_missing <- billboard |>
+  filter(is.na(front_person_age))
+
+front_person_missing
+```
+
+We will now do a short investigation on the other variables:
+
+1.  `label`, `parent_label` –\> 0.0008
+
+There is only 1 song contributing to these variables' missing values, and it is "Rich Men North of Richmond" by Oliver Anthony. Upon a quick Google search, this song has no label/parent label because it was self released. This is interesting to note as it is the *only* song to have charted #1 in the Billboard Hot 100 to be self released!
+
+```{r}
+label_missing <- billboard |>
+  filter(is.na(label) | is.na(parent_label))
+
+label_missing
+```
+
+2.  `cdr_genre`, `cdr_style` -\> 0.0747
+
+    `discogs_genre` -\> 0.0135
+
+    `discogs_style` -\> 0.0212
+
+Observation 1: Some instances of `discogs_genre` != NA and `discogs_style` = NA where it is supposed to be "None" (example: "STAY" by Kid Laroi being NA but "Save Your Tears" by The Weeknd being "None")
+
+-   **ACTION ITEM: Change all "NA" on discogs_style where discogs_genre is not NA to be "None"**
+
+Observation 2: There are many instances of `cdr_genre` and `cdr_style` NA where `discogs` are NOT NA.
+
+-   **ACTION ITEM: Either change all of these to be the same with discogs? Or maybe just use discogs in analyses**
+
+Observation 3: Only 16 instances of both `cdr_genre` and `discogs_genre` missing
+
+-   **ACTION ITEM: Manually input for `discogs_genre` and/or `discogs_style`**
+
+```{r}
+cdr_missing <- billboard |>
+  filter(is.na(cdr_genre) | is.na(cdr_style))
+
+cdr_missing
+```
+
+```{r}
+discogs_missing <- billboard |>
+  filter(is.na(discogs_style) | discogs_style == "None")
+
+discogs_missing
+```
+
+```{r}
+all_genre_style_missing <- billboard |>
+  filter(is.na(cdr_genre) & is.na(discogs_genre))
+
+all_genre_style_missing
+```
+
+**ACTION ITEM: Make co-occurrence graph with Joyce's redav package for genre/style**
+
+```{r}
+# ASK JOYCE IF CAN JUST DO CERTAIN VARIABLES
+library(redav)
+
+plot_missing(billboard)
+```
+
+3.  `artist_black` -\> 0.0535
+
+They should definitely not be missing because it is a dummy for whether the artist is Black or not. Beyonce, for example, should be a 1.
+
+```{r}
+black_missing <- billboard |>
+  filter(is.na(artist_black))
+```
+
+4.  `songwriters_w_o_interpolation_sample_credits` -\> 0.0008
+
+    `songwriter_male` , `songwriter_white` -\> 0.00169
+
+Interpolation: only 1 missing, and I think this is a mistake. The songwriters listed in the `songwriters` column are the songwriters that should be in the `songwriters_w_o_interpolation_sample_credits` column because they are not sampled songwriters.
+
+```{r}
+interpolation_missing <- billboard |>
+  filter(is.na(songwriters_w_o_interpolation_sample_credits))
+```
+
+The only 2 songs with `songwriter_male` and `songwriter_white` missing are the only 2 songs with `songwriters` listed as "Unknown".
+
+```{r}
+songwritermw_missing <- billboard |>
+  filter(is.na(songwriter_male) | is.na(songwriter_white))
+
+unknown <- billboard |>
+  filter(songwriters=="Unknown")
+```
+
+5.  `producer_male`,`producer_white`, `artist_is_a_producer`, `artist_is_only_producer` –\> 0.00339
+
+The only 4 songs with missing producer values are because their `producers` are listed as "Unknown".
+
+```{r}
+producers_missing <- billboard |>
+  filter(is.na(producer_male) | is.na(producer_white) | is.na(artist_is_a_producer) | is.na(artist_is_only_producer))
+```
