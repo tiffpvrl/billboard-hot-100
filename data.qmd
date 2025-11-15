@@ -2,6 +2,18 @@
 
 The dataset we will be using for this project can be found here: <https://github.com/rfordatascience/tidytuesday/blob/main/data/2025/2025-08-26/readme.md>
 
+```{r}
+library(tidyverse)
+library(dplyr)
+library(redav)
+library(naniar)
+
+tuesdata <- tidytuesdayR::tt_load(2025, week = 34)
+
+billboard <- tuesdata$billboard
+topics <- tuesdata$topics
+```
+
 ## Description
 
 The data contains every song to ever top the Billboard Hot 100 between August 4, 1958 and January 11, 2025 and is compiled by Chris Dalla Riva as an accompaniment to his book “Uncharted Territory: What Numbers Tell Us about the Biggest Hit Songs and Ourselves” being published this November. The dataset itself contains data from multiple sources aside from the author, including BPM metrics provided by Spotify, genre details provided by Discogs, and other variables citing Tidal, Songview, and Fred Bronson’s “The Billboard Book of Number One” as sources.
@@ -11,47 +23,39 @@ We chose this dataset specifically because it has numerous variables that will l
 ## Missing value analysis
 
 ```{r}
-library(tidyverse)
+missing_billboard <- billboard |>
+  select(where(~any(is.na(.))))
+
+gg_miss_var(missing_billboard, show_pct = TRUE) +
+  labs(title = "Missing Value Proportions per Column")
 ```
 
-```{r}
-tuesdata <- tidytuesdayR::tt_load(2025, week = 34)
+### Observations:
 
-billboard <- tuesdata$billboard
-topics <- tuesdata$topics
-```
-
-```{r}
-missing_proportions <- colMeans(is.na(billboard))
-print(missing_proportions)
-```
-
-### Observations
+### 1. Variables with \>0.8 missing
 
 There are only a few variables that have \>0.8 of its values missing:
 
 `featured_artists`, `talent_contestant`, `sound_effects`, `featured_in_a_then_contemporary_play`, `featured_in_a_then_contemporary_film`, `featured_in_a_then_contemporary_t_v_show`, `double_a_side`
 
-For these variables, it makes sense why so many of its values would be missing. Not every song would have a featured artist, or have the main artist be from a talent competition, etc. They are not missing because of corrupt data.
+For these variables, it makes sense why so many of its values would be missing. Not every song would have a featured artist, or have the main artist be from a talent competition, etc. They are not missing because of corrupt data. We will thus leave these columns out of our analyses.
 
-**\[ACTION ITEM\] We can then exclude them from our research questions and provide short analyses for each of them based on their respective proportions of missing data instead.**
+### 2. Missing variables with known documentation
 
 The following variables have explanations in the documentation for its missing values
 
-1.   `bpm`, `energy`, `danceability`, `happiness`, `loudness_d_b`, `acousticness` –\> 0.0016
+1.  `bpm`, `energy`, `danceability`, `happiness`, `loudness_d_b`, `acousticness` –\> 0.0016
 
 These variables are taken from Spotify data, so they are presumably missing from the dataset because the data is not available through Spotify. Below, I have created a data frame containing rows missing the above Spotify variables. It looks like there are 2 songs responsible for these missing values: "Rock On" by Michael Damian and "Lately" by Divine.
 
 ```{r}
-library(dplyr)
-
 spotify_missing <- billboard |>
   filter(is.na(bpm) | is.na(energy) | is.na(danceability) | is.na(happiness) | is.na(loudness_d_b) | is.na(acousticness))
 
 spotify_missing
 ```
 
-2.   `front_person_age`
+2.  `front_person_age`
 
 As per the data documentation, "If \[`front_person_age` is\] blank, then the age(s) could not be accurately located or age did not make sense (i.e., the band was animated)".
 
@@ -61,6 +65,8 @@ front_person_missing <- billboard |>
 
 front_person_missing
 ```
+
+### 3. Remaining missing variables
 
 We will now do a short investigation on the other variables:
 
@@ -81,69 +87,47 @@ label_missing
 
     `discogs_style` -\> 0.0212
 
-Observation 1: Some instances of `discogs_genre` != NA and `discogs_style` = NA where it is supposed to be "None" (example: "STAY" by Kid Laroi being NA but "Save Your Tears" by The Weeknd being "None")
-
--   **ACTION ITEM: Change all "NA" on discogs_style where discogs_genre is not NA to be "None"**
-
-Observation 2: There are many instances of `cdr_genre` and `cdr_style` NA where `discogs` are NOT NA.
-
--   **ACTION ITEM: Either change all of these to be the same with discogs? Or maybe just use discogs in analyses**
-
-Observation 3: Only 16 instances of both `cdr_genre` and `discogs_genre` missing
-
--   **ACTION ITEM: Manually input for `discogs_genre` and/or `discogs_style`**
-
 ```{r}
-cdr_missing <- billboard |>
-  filter(is.na(cdr_genre) | is.na(cdr_style))
+genres <- billboard |>
+  select(cdr_genre, cdr_style, discogs_genre, discogs_style)
 
-cdr_missing
+plot_missing(genres)
 ```
 
-```{r}
-discogs_missing <- billboard |>
-  filter(is.na(discogs_style) | discogs_style == "None")
+[Observation 1:]{.underline} There are some instances of `discogs_genre` != NA and `discogs_style` = NA where `discogs_style` is supposed to be "None" (example: The style for "STAY" by Kid Laroi being NA but "Save Your Tears" by The Weeknd being "None", despite both of them being absent from Discogs).
 
-discogs_missing
-```
+-   **\[IN CLEANING FUNCTION\] Change all "NA" on `discogs_style` where `discogs_genre` is not NA to be "None"**
 
-```{r}
-all_genre_style_missing <- billboard |>
-  filter(is.na(cdr_genre) & is.na(discogs_genre))
+[Observation 2:]{.underline} There are many instances of `cdr_genre` and `cdr_style` = NA where `discogs` are NOT NA.
 
-all_genre_style_missing
-```
+-   Since `cdr_genre` and `cdr_style` are both subjective interpretations of genre and style from the author, Chris Dalla Riva, we cannot just impute these missing values with our own interpretations. We will be using `discogs_genre` and `discogs_style` for genre/style analyses instead.
 
-**ACTION ITEM: Make co-occurrence graph with Joyce's redav package for genre/style**
+[Observation 3:]{.underline} Only 16 NA instances of BOTH `cdr_genre`/`cdr_style` and `discogs_genre`/`discogs_style` despite information being available on Discogs
 
-```{r}
-# ASK JOYCE IF CAN JUST DO CERTAIN VARIABLES
-library(redav)
+-   We discovered that these NA instances are likely because the scraping script Chris Dalla Riva used to retrieve genre/style information from Discogs only takes into account songs that appear on Discogs' "Releases" collection. Some songs that have charted only appear on the album it is part of, under Discogs' "Master" collection.
 
-plot_missing(billboard)
-```
+-   **\[IN CLEANING FUNCTION\]** **We have created our own script (`discogs_scrape.py`) to scrape the genre/style of these 16 missing instances in the dataset so that we can have complete genre/style columns under `discogs_genre` and `discogs_style`. Thus, our genre/style analyses will only be using the aforementioned variables.**
 
 3.  `artist_black` -\> 0.0535
 
-They should definitely not be missing because it is a dummy for whether the artist is Black or not. Beyonce, for example, should be a 1.
+They should definitely not be missing because it is a dummy for whether the artist is Black or not. Beyonce, for example, should be a 1. There are 63 missing instances, which would be time consuming to impute. Since `artist_white` is complete, we might just use it for our analyses instead.
 
 ```{r}
 black_missing <- billboard |>
   filter(is.na(artist_black))
+
+dim(black_missing)
 ```
 
 4.  `songwriters_w_o_interpolation_sample_credits` -\> 0.0008
 
-    `songwriter_male` , `songwriter_white` -\> 0.00169
+There is only 1 missing for `songwriters_w_o_interpolation_sample_credits` and I think this is a mistake. The songwriters listed in the `songwriters` column are the songwriters that should be in the `songwriters_w_o_interpolation_sample_credits` column because they are not sampled songwriters.
 
-Interpolation: only 1 missing, and I think this is a mistake. The songwriters listed in the `songwriters` column are the songwriters that should be in the `songwriters_w_o_interpolation_sample_credits` column because they are not sampled songwriters.
+-   **\[IN CLEANING FUNCTION\] We will just impute the missing value for this 1 instance with whatever is in the `songwriters` column**
 
-```{r}
-interpolation_missing <- billboard |>
-  filter(is.na(songwriters_w_o_interpolation_sample_credits))
-```
+5.  `songwriter_male` , `songwriter_white` -\> 0.00169
 
-The only 2 songs with `songwriter_male` and `songwriter_white` missing are the only 2 songs with `songwriters` listed as "Unknown".
+The only 2 songs with `songwriter_male` and `songwriter_white` missing are the only 2 songs with `songwriters` listed as "Unknown". This makes sense, so we will leave it as is.
 
 ```{r}
 songwritermw_missing <- billboard |>
@@ -153,11 +137,108 @@ unknown <- billboard |>
   filter(songwriters=="Unknown")
 ```
 
-5.  `producer_male`,`producer_white`, `artist_is_a_producer`, `artist_is_only_producer` –\> 0.00339
+6.  `producer_male`,`producer_white`, `artist_is_a_producer`, `artist_is_only_producer` –\> 0.00339
 
-The only 4 songs with missing producer values are because their `producers` are listed as "Unknown".
+The only 4 songs with missing producer values are because their `producers` are listed as "Unknown". This makes sense, so we will leave it as is.
 
 ```{r}
 producers_missing <- billboard |>
   filter(is.na(producer_male) | is.na(producer_white) | is.na(artist_is_a_producer) | is.na(artist_is_only_producer))
+```
+
+## Final Cleaning Function
+
+1.  Get rid of variables \>0.8 missing: `featured_artists`, `talent_contestant`, `sound_effects`, `featured_in_a_then_contemporary_play`, `featured_in_a_then_contemporary_film`, `featured_in_a_then_contemporary_t_v_show`, `double_a_side`
+2.  Change all NA on `discogs_style` where `discogs_genre` is not NA to be "None"
+3.  Export `billboard_genre_style_missing.csv` \<- instances of `billboard` where both `discogs_style` and `discogs_genre` missing
+4.  Run `discogs_scrape.py` on `billboard_genre_style_missing.csv`
+5.  Do join and coalesce
+6.  Fix missing instance of `songwriters_w_o_interpolation_sample_credits`
+
+```{r}
+# STEP 1
+missing_proportions <- colMeans(is.na(billboard))
+drop_cols <- names(missing_proportions[missing_proportions > 0.8])
+
+billboard <- billboard |>
+  select(-c(drop_cols))
+
+# STEP 2
+billboard$discogs_style <- ifelse(
+  is.na(billboard$discogs_style) & !is.na(billboard$discogs_genre),
+  "None",
+  billboard$discogs_style
+)
+
+obs_1 <- billboard |>
+  filter(is.na(discogs_style) & !is.na(discogs_genre))
+dim(obs_1) # Should be 0 rows
+
+# STEP 3
+# Only uncomment this when reproducing
+# billboard_genre_style_missing.csv is on the repo
+
+# billboard_genre_style_missing <- billboard |>
+#   filter(is.na(discogs_genre) & is.na(discogs_style)) |>
+#   select(c("song", "artist"))
+# 
+# write.csv(billboard_genre_style_missing,
+#           "billboard_genre_style_missing.csv", row.names = FALSE)
+
+
+# STEP 4
+# Only uncomment this when reproducing
+# Run discogs_scrape.py on billboard_genre_style_missing.csv, which will output obs_3.csv
+# obs_3.csv is on the repo
+
+# STEP 5
+obs_3 <- read.csv("obs_3.csv")
+
+billboard <- billboard |>
+  left_join(
+    obs_3 |> select(song, artist, discogs_genre, discogs_style),
+    by = c("song", "artist"),
+    suffix = c("_old", "_new")
+  ) |>
+  mutate(
+    discogs_genre = coalesce(discogs_genre_old, discogs_genre_new),
+    discogs_style = coalesce(discogs_style_old, discogs_style_new)
+  ) |>
+  select(-discogs_genre_old, -discogs_genre_new, 
+         -discogs_style_old, -discogs_style_new)
+
+# STEP 6
+billboard$songwriters_w_o_interpolation_sample_credits <- ifelse(
+  is.na(billboard$songwriters_w_o_interpolation_sample_credits),
+  billboard$songwriters,
+  billboard$songwriters_w_o_interpolation_sample_credits
+)
+
+interpolation_missing <- billboard |>
+  filter(is.na(songwriters_w_o_interpolation_sample_credits))
+
+dim(interpolation_missing) # Should be 0
+```
+
+After cleaning the data, we should have:
+
+1.  No variables with \>0.8 values missing
+2.  No missing instances for `discogs_genre`/`discogs_style`
+3.  No missing instances for `songwriters_w_o_interpolation_sample_credits`
+
+```{r}
+# NEW PLOT: No variables with >0.8 missing
+missing_billboard <- billboard |>
+  select(where(~any(is.na(.))))
+
+gg_miss_var(missing_billboard, show_pct = TRUE) +
+  labs(title = "Missing Value Proportions per Column")
+```
+
+```{r}
+# NEW PLOT: No missing genre/style from discogs
+genres <- billboard |>
+  select(cdr_genre, cdr_style, discogs_genre, discogs_style)
+
+plot_missing(genres)
 ```
