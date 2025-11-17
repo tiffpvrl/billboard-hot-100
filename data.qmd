@@ -176,7 +176,6 @@ dim(obs_1) # Should be 0 rows
 
 # STEP 3
 # Only uncomment this when reproducing
-# billboard_genre_style_missing.csv is on the repo
 
 # billboard_genre_style_missing <- billboard |>
 #   filter(is.na(discogs_genre) & is.na(discogs_style)) |>
