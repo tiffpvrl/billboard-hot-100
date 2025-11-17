@@ -228,4 +228,4 @@ def process_csv(input_file='obs_3.csv', output_file='obs_3.csv'):
     print(f"  Not found: {len(songs) - found}")
 
 if __name__ == "__main__":
-    process_csv('obs_3.csv', 'obs_3.csv')
+    process_csv('billboard_genre_style_missing.csv', 'obs_3.csv')
