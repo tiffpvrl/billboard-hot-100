@@ -1,1 +1,285 @@
 # Results
+
+```{r}
+library(tidyverse)
+library(lubridate)
+library(ggplot2)
+library(scales)
+library(ggrepel)
+billboard <- read_csv("/Users/Suvethika/Desktop/billboard.csv", show_col_types = FALSE)
+```
+
+
+### One Year in the Life of #1
+
+
+```{r}
+#updating billboard to include a column for year and decade
+billboard_updated <- billboard |>
+  mutate(
+    date_clean = as.Date(.data$date),  # Convert POSIXct to Date to help render
+    year = lubridate::year(date_clean),  # Extract year
+    decade = floor(year / 10) * 10
+  ) |>
+  select(-date) |>  # Remove old date column
+  rename(date = date_clean)  # Rename back to date
+
+
+week_level <- billboard_updated |>
+  # Create a vector of Date objects, one for each week the song was #1.
+  # map2() applies a function to (date, weeks_at_number_one) row-by-row.
+  # seq.Date() generates weekly sequences like: date, date+7, date+14, ...
+  mutate(week_dates = map2(
+    .data$date, 
+    weeks_at_number_one,
+    ~ seq.Date(as_date(.x), by = "week", length.out = .y)
+  )) |>
+  # Expand the list-column `week_dates` so each row becomes one weekly observation.
+  unnest(cols = c(week_dates)) |>
+  rename(chart_date = week_dates) |>
+  # Extract additional useful time components from the chart week
+  mutate(
+    year = year(chart_date),
+    week_of_year = isoweek(chart_date),
+    song_id = paste0(song, " — ", artist)
+  ) |>
+  arrange(chart_date)
+
+# Summary: number of unique #1 songs per year
+songs_per_year <- billboard_updated |>
+  group_by(year) |>
+  summarise(unique_no1 = n_distinct(paste0(song, " — ", artist)), .groups = "drop")
+```
+
+
+How many different songs hit #1 in 1975 vs. 2015?
+
+```{r}
+# Print numbers for 1975 vs 2015
+val_1975 <- songs_per_year |> filter(year == 1975) %>% pull(unique_no1)
+val_2015 <- songs_per_year |> filter(year == 2015) %>% pull(unique_no1)
+cat("Unique #1 songs in 1975:", ifelse(length(val_1975)==0, NA, val_1975), "\n")
+cat("Unique #1 songs in 2015:", ifelse(length(val_2015)==0, NA, val_2015), "\n")
+```
+
+From our initial exploration, we noticed that in 1975 there were 35 unique #1 songs, while in 2015 there were only 8. This suggests that in earlier decades, more songs reached the top of the chart briefly, whereas in recent years, fewer songs dominate the #1 spot for longer periods.
+
+To investigate this further, we can examine the distribution of weeks_at_number_one across decades. By creating boxplots for each decade, we can visually compare:
+- The median number of weeks songs stayed at #1 in each decade.
+- How the range and spread of chart-topping durations changed over time.
+- Any extreme long-running hits (outliers) that may skew the averages in recent decades.
+
+This approach helps confirm whether songs in recent decades truly stay at #1 longer than in earlier decades, supporting the hypothesis of increased chart dominance by fewer songs.
+
+If songs today tend to dominate the charts for longer periods than in the past, then in the boxplot of weeks_at_number_one by decade, we would expect to see:
+- Earlier decades (e.g., 1970s, 1980s): Lower median and shorter interquartile range, indicating most songs spent only a few weeks at #1.
+- Recent decades (e.g., 2000s, 2010s): Higher median and longer upper whiskers, showing that fewer songs reached #1 but those that did stayed there for many weeks.
+- Outliers: More extreme long-running #1 hits in recent decades (longer upper tails), reflecting chart dominance by a small number of songs.
+
+```{r}
+# Plot 1: Box plot of weeks at #1 across decades
+# Ensure each song has a single decade (counts the first decade it shows up in)
+billboard_unique <- billboard_updated |>
+  group_by(song) |>
+  summarize(decade = first(decade), .groups = "drop")
+
+# Prepare weeks_by_song + decade
+
+weeks_by_song <- billboard_updated |>
+  distinct(song, artist, weeks_at_number_one) |>
+  mutate(weeks_at_number_one = as.integer(weeks_at_number_one))
+
+weeks_with_decade <- weeks_by_song |>
+  left_join(billboard_unique, by = "song") |>
+  mutate(decade = factor(decade))  # ensure decade is categorical
+
+# Boxplot of weeks at #1 by decade
+p_box <- ggplot(weeks_with_decade, aes(x = decade, y = weeks_at_number_one)) +
+  geom_boxplot(outlier.size = 1, varwidth = TRUE, fill = "skyblue") +
+  labs(
+    title = "Distribution of Weeks at #1 by Decade",
+    x = "Decade",
+    y = "Weeks at #1"
+  ) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+print(p_box)
+```
+
+Consistent medians (1950s-1980s): The median (thick black line) stays remarkably stable around 2 weeks at #1 across the first several decades. This means that in any of these decades, the typical #1 song held the position for about 2 weeks.
+
+Shift in recent decades (2000s-2010s): The medians appear to increase slightly, and the boxes themselves shift upward. This indicates that songs reaching #1 in recent decades tend to stay there longer on average.
+
+Outliers: From the 1950s through 1990s, we see a gradual increase in extreme long-running hits, suggesting that blockbuster songs became slightly more common. However, the dramatic spike to 7 outliers in the 2020s is striking and suggests a fundamental shift in how the charts work in the streaming era.
+
+While it's true that fewer songs dominate the charts in recent years, the story is more about extremes than overall shifts. Most songs still cluster around 2-3 weeks at #1 even in recent decades, but there's an increasing tendency for certain mega-hits to stay at #1 for extraordinarily long periods (10+ weeks or even 15+ weeks based on those outliers). This creates a "winner-take-all" dynamic where streaming platforms and algorithmic recommendations may help a few songs achieve unprecedented chart dominance while the typical song's chart tenure remains similar to earlier eras.
+
+Keeping in mind that 2020s is incomplete becuase we are still in the decade. The 2020s data is essentially showing a snapshot in progress rather than a complete picture. The fact that we already have 7 outliers in just 5 years suggests that the full decade would likely show the most extreme chart concentration of any era, with both a higher typical duration AND more mega-hits dominating for months at a time. Even with incomplete data, the 2020s are already showing unprecedented chart dominance by a small number of songs.
+
+### Marathon Hits Across Decades
+
+To better understand these outliers, I wanted to identify the top 10 longest-reigning #1 songs of all time. Additionally, I was curious to examine the longest-running #1 hit from each decade to see if any songs maintained their dominance across multiple decades or if each era had its own distinct chart champions.
+
+```{r}
+# Identify marathon hits (10+ weeks)
+song_runs <- billboard_updated |>
+  distinct(song, artist, weeks_at_number_one, year, decade) |>
+  mutate(
+    song_id = paste0(song, " — ", artist),
+    weeks_at_number_one = as.integer(weeks_at_number_one)
+  )
+
+top10_alltime <- song_runs |>
+  arrange(desc(weeks_at_number_one)) |>
+  slice_head(n = 10)
+
+longest_per_decade <- song_runs |>
+  group_by(decade) |>
+  slice_max(weeks_at_number_one, n = 1, with_ties = FALSE) |>
+  ungroup()
+
+marathon_hits <- song_runs |>
+  mutate(type = ifelse(weeks_at_number_one >= 10, "marathon", "typical"))
+```
+
+```{r}
+top10_alltime
+```
+
+```{r}
+longest_per_decade
+```
+The data reveals a striking pattern of increasing chart dominance over time. While the longest-reigning #1 songs from the 1950s through 1980s peaked at just 9-10 weeks, this ceiling shattered in the 1990s when Mariah Carey's "One Sweet Day" held the top spot for 16 weeks. The trend accelerated dramatically in the streaming era: 7 of the top 10 longest-reigning songs of all time are from 2017 or later, with the 2020s claiming the record at 19 weeks despite being an incomplete decade. Notably, the 2020s already has three songs in the all-time top 10—more than any complete decade from the 20th century. This confirms the "winner-take-all" dynamic identified earlier, where streaming platforms and algorithmic recommendations enable a small number of mega-hits to achieve unprecedented chart dominance, fundamentally transforming how songs reach and maintain the #1 position.
+
+Next, we wanted to investigate whether there are seasonal patterns in when marathon hits (songs that topped the charts for 10+ weeks) first reached #1. Specifically, we were curious if these dominant songs tend to emerge during particular times of the year, such as summer months when listening increases or the December holiday season when certain songs gain cultural momentum.
+
+
+```{r}
+# Plot 2: Bar Chart of Marathon Hits by Month
+# Count marathon hits per month
+marathon_month_counts <- marathon_hits_only |>
+  count(month)
+
+# Bar chart of marathon hits by month
+ggplot(marathon_month_counts, aes(x = month, y = n)) +
+  geom_col(fill = "steelblue", color = "black", width = 0.9) +
+  labs(
+    title = "Month When Marathon Hits First Reached #1",
+    subtitle = "Songs with 10+ consecutive weeks at #1",
+    x = "Month",
+    y = "Number of Marathon Hits"
+  ) +
+  theme_minimal(base_size = 14)
+```
+
+The bar chart reveals interesting seasonal patterns in when marathon hits (songs with 10+ consecutive weeks at #1) first reach the top of the charts. April and November emerge as the most successful months, each producing 6 marathon hits—significantly more than any other time of year. This bimodal distribution suggests that timing does play a role in a song's potential for extended chart dominance, though the underlying factors differ between these two peaks.
+
+The November spike is particularly intriguing and can likely be attributed to strategic timing around the holiday season. Songs that reach #1 in November benefit from sustained listening through the holidays and into the new year, giving them momentum to maintain their position for months. However, December itself only produced 3 marathon hits, suggesting that releases during the actual holiday season face fiercer competition or stronger turnover as listeners shift to new music in January.
+
+Surprisingly, the data challenges the assumption that summer is prime time for chart-dominating hits. While June shows moderate success with 5 marathon hits, July and August produced only 3-4 each. This mixed performance suggests there's no clear "summer song" advantage for achieving prolonged dominance, despite increased listening during warmer months.
+
+The most puzzling finding is the April peak, which produced 6 marathon hits despite lacking an obvious cultural explanation like holidays or seasonal listening patterns. Meanwhile, February, March, and September emerge as "dead zones" with only 2 marathon hits each—the lowest counts on the chart. Overall, while the data shows that timing matters, there's no single "magic month" that guarantees a marathon hit, and the success factors appear more complex than simple seasonal listening patterns.
+
+
+### Looking into One Week wonders
+
+While looking and investigating marathons which is a smalle proportion of the data thought we would be able to learn more from looking into one week wonder where a song charted only for one week. Wanted to first look what percentage of the songs only charted for one week.
+
+```{r}
+# Calculate percentage of #1 songs with only 1 week at the top
+one_week_pct <- weeks_by_song |>
+  summarise(
+    one_week_count = sum(weeks_at_number_one == 1, na.rm = TRUE),
+    total_songs = n(),
+    pct = one_week_count / total_songs * 100
+  )
+
+one_week_pct
+```
+That means roughly 1 in 3 #1 hits were “one-week wonders,” topping the chart briefly before being replaced.
+
+```{r}
+# Compute summary per decade
+one_week_by_decade <- billboard_updated |>
+  distinct(song, artist, decade, weeks_at_number_one) |>   # one row per song
+  group_by(decade) |>
+  summarise(
+    total_songs = n(),
+    one_week_count = sum(weeks_at_number_one == 1),
+    pct_one_week = one_week_count / total_songs * 100
+  ) |>
+  arrange(decade)
+
+one_week_by_decade
+```
+Looking across decades, the share of songs that spend only a single week at #1 reveals a striking pattern in chart behavior. In the 1950s and 1960s, one-week #1 hits were relatively rare, typically making up around a quarter or less of all chart-toppers. But in the 1970s this changed dramatically—nearly 50% of #1 songs that decade lasted only a single week, indicating much higher turnover at the top of the chart.
+
+This proportion declines again in the 1980s through the 2010s, suggesting that songs generally enjoyed longer runs at #1 during those decades. However, the 2020s reverse that trend sharply: over 56% of #1 songs so far have lasted just one week. This aligns with an era defined by rapid consumption cycles, algorithmic feeds, and social-media–driven virality, where hits can spike quickly and disappear just as fast.
+
+Interestingly, this pattern complicates the earlier hypothesis that songs now tend to dominate the charts for longer. Both things appear to be true: the longest #1 runs are getting longer (the rise of marathon hits), but simultaneously more songs are lasting only one week. In other words, chart behavior is becoming increasingly polarized—a mix of very short-lived hits and a few extremely dominant ones.
+
+
+
+To better understand these one-week wonders, we investigated their genres across the entire dataset. By examining the types of songs that only spent a single week at #1, we can identify whether certain musical styles are more prone to brief chart dominance. This helps reveal patterns in listener behavior, production trends, and how certain genres may be more likely to generate short-term viral hits versus sustained popularity.
+
+```{r}
+library(dplyr)
+library(ggplot2)
+
+# Filter only one-week #1 hits
+one_week_hits <- billboard_updated %>%
+  filter(weeks_at_number_one == 1)
+
+# Count number of one-week hits per genre
+genre_counts <- one_week_hits %>%
+  group_by(genre) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+# Optional: convert to factor so bars are ordered
+genre_counts$genre <- factor(genre_counts$genre, levels = genre_counts$genre)
+
+# Plot: Bar chart of one-week hits by genre
+ggplot(genre_counts, aes(x = genre, y = count)) +
+  geom_col(fill = "steelblue", color = "black", width = 0.8) +
+  labs(
+    title = "Genres of One-Week #1 Hits",
+    subtitle = "Songs that spent only a single week at the top of the charts",
+    x = "Genre",
+    y = "Number of One-Week Hits"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
+
+```{r}
+# Filter only one-week #1 hits
+one_week_hits <- billboard_updated %>%
+  filter(weeks_at_number_one == 1)
+
+# Count number of one-week hits per cdr_genre
+genre_counts <- one_week_hits %>%
+  group_by(cdr_genre) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+
+# Convert to factor for ordered bars
+genre_counts$cdr_genre <- factor(genre_counts$cdr_genre, levels = genre_counts$cdr_genre)
+
+# Bar chart
+ggplot(genre_counts, aes(x = cdr_genre, y = count)) +
+  geom_col(fill = "steelblue", color = "black", width = 0.8) +
+  labs(
+    title = "Genres of One-Week #1 Hits",
+    subtitle = "Songs that spent only a single week at the top of the charts",
+    x = "Genre",
+    y = "Number of One-Week Hits"
+  ) +
+  theme_minimal(base_size = 14) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+```
+
