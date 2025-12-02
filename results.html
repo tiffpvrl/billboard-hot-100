@@ -111,7 +111,8 @@ The following object is masked from 'package:readr':
 
     col_factor</code></pre>
 </div>
-<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a>billboard <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"/Users/Suvethika/Desktop/billboard.csv"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="sourceCode cell-code" id="cb5"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb5-1"><a href="#cb5-1" aria-hidden="true" tabindex="-1"></a><span class="fu">library</span>(ggrepel)</span>
+<span id="cb5-2"><a href="#cb5-2" aria-hidden="true" tabindex="-1"></a>billboard <span class="ot">&lt;-</span> <span class="fu">read_csv</span>(<span class="st">"/Users/Suvethika/Desktop/billboard.csv"</span>, <span class="at">show_col_types =</span> <span class="cn">FALSE</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <section id="one-year-in-the-life-of-1" class="level3">
 <h3 class="anchored" data-anchor-id="one-year-in-the-life-of-1">One Year in the Life of #1</h3>
@@ -119,32 +120,38 @@ The following object is masked from 'package:readr':
 <div class="sourceCode cell-code" id="cb6"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb6-1"><a href="#cb6-1" aria-hidden="true" tabindex="-1"></a><span class="co">#updating billboard to include a column for year and decade</span></span>
 <span id="cb6-2"><a href="#cb6-2" aria-hidden="true" tabindex="-1"></a>billboard_updated <span class="ot">&lt;-</span> billboard <span class="sc">|&gt;</span></span>
 <span id="cb6-3"><a href="#cb6-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">date_clean =</span> <span class="fu">as.Date</span>(.data<span class="sc">$</span>date),  <span class="co"># Convert POSIXct to Date</span></span>
+<span id="cb6-4"><a href="#cb6-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">date_clean =</span> <span class="fu">as.Date</span>(.data<span class="sc">$</span>date),  <span class="co"># Convert POSIXct to Date to help render</span></span>
 <span id="cb6-5"><a href="#cb6-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">year =</span> lubridate<span class="sc">::</span><span class="fu">year</span>(date_clean),  <span class="co"># Extract year</span></span>
 <span id="cb6-6"><a href="#cb6-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">decade =</span> <span class="fu">floor</span>(year <span class="sc">/</span> <span class="dv">10</span>) <span class="sc">*</span> <span class="dv">10</span></span>
 <span id="cb6-7"><a href="#cb6-7" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
 <span id="cb6-8"><a href="#cb6-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">select</span>(<span class="sc">-</span>date) <span class="sc">|&gt;</span>  <span class="co"># Remove old date column</span></span>
 <span id="cb6-9"><a href="#cb6-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">date =</span> date_clean)  <span class="co"># Rename back to date</span></span>
 <span id="cb6-10"><a href="#cb6-10" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a>week_level <span class="ot">&lt;-</span> billboard_updated <span class="sc">|&gt;</span></span>
-<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">week_dates =</span> <span class="fu">map2</span>(</span>
-<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>    .data<span class="sc">$</span>date,  <span class="co"># Also update this</span></span>
-<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>    weeks_at_number_one,</span>
-<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>    <span class="sc">~</span> <span class="fu">seq.Date</span>(<span class="fu">as_date</span>(.x), <span class="at">by =</span> <span class="st">"week"</span>, <span class="at">length.out =</span> .y)</span>
-<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
-<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> <span class="fu">c</span>(week_dates)) <span class="sc">|&gt;</span></span>
-<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">chart_date =</span> week_dates) <span class="sc">|&gt;</span></span>
-<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
-<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>    <span class="at">year =</span> <span class="fu">year</span>(chart_date),</span>
-<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>    <span class="at">week_of_year =</span> <span class="fu">isoweek</span>(chart_date),</span>
-<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>    <span class="at">song_id =</span> <span class="fu">paste0</span>(song, <span class="st">" — "</span>, artist)</span>
-<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
-<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(chart_date)</span>
-<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a></span>
-<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a><span class="co"># Summary: number of unique #1 songs per year</span></span>
-<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>songs_per_year <span class="ot">&lt;-</span> billboard_updated <span class="sc">|&gt;</span></span>
-<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(year) <span class="sc">|&gt;</span></span>
-<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">unique_no1 =</span> <span class="fu">n_distinct</span>(<span class="fu">paste0</span>(song, <span class="st">" — "</span>, artist)), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<span id="cb6-11"><a href="#cb6-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-12"><a href="#cb6-12" aria-hidden="true" tabindex="-1"></a>week_level <span class="ot">&lt;-</span> billboard_updated <span class="sc">|&gt;</span></span>
+<span id="cb6-13"><a href="#cb6-13" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Create a vector of Date objects, one for each week the song was #1.</span></span>
+<span id="cb6-14"><a href="#cb6-14" aria-hidden="true" tabindex="-1"></a>  <span class="co"># map2() applies a function to (date, weeks_at_number_one) row-by-row.</span></span>
+<span id="cb6-15"><a href="#cb6-15" aria-hidden="true" tabindex="-1"></a>  <span class="co"># seq.Date() generates weekly sequences like: date, date+7, date+14, ...</span></span>
+<span id="cb6-16"><a href="#cb6-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">week_dates =</span> <span class="fu">map2</span>(</span>
+<span id="cb6-17"><a href="#cb6-17" aria-hidden="true" tabindex="-1"></a>    .data<span class="sc">$</span>date, </span>
+<span id="cb6-18"><a href="#cb6-18" aria-hidden="true" tabindex="-1"></a>    weeks_at_number_one,</span>
+<span id="cb6-19"><a href="#cb6-19" aria-hidden="true" tabindex="-1"></a>    <span class="sc">~</span> <span class="fu">seq.Date</span>(<span class="fu">as_date</span>(.x), <span class="at">by =</span> <span class="st">"week"</span>, <span class="at">length.out =</span> .y)</span>
+<span id="cb6-20"><a href="#cb6-20" aria-hidden="true" tabindex="-1"></a>  )) <span class="sc">|&gt;</span></span>
+<span id="cb6-21"><a href="#cb6-21" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Expand the list-column `week_dates` so each row becomes one weekly observation.</span></span>
+<span id="cb6-22"><a href="#cb6-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">unnest</span>(<span class="at">cols =</span> <span class="fu">c</span>(week_dates)) <span class="sc">|&gt;</span></span>
+<span id="cb6-23"><a href="#cb6-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">rename</span>(<span class="at">chart_date =</span> week_dates) <span class="sc">|&gt;</span></span>
+<span id="cb6-24"><a href="#cb6-24" aria-hidden="true" tabindex="-1"></a>  <span class="co"># Extract additional useful time components from the chart week</span></span>
+<span id="cb6-25"><a href="#cb6-25" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb6-26"><a href="#cb6-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">year =</span> <span class="fu">year</span>(chart_date),</span>
+<span id="cb6-27"><a href="#cb6-27" aria-hidden="true" tabindex="-1"></a>    <span class="at">week_of_year =</span> <span class="fu">isoweek</span>(chart_date),</span>
+<span id="cb6-28"><a href="#cb6-28" aria-hidden="true" tabindex="-1"></a>    <span class="at">song_id =</span> <span class="fu">paste0</span>(song, <span class="st">" — "</span>, artist)</span>
+<span id="cb6-29"><a href="#cb6-29" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb6-30"><a href="#cb6-30" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(chart_date)</span>
+<span id="cb6-31"><a href="#cb6-31" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb6-32"><a href="#cb6-32" aria-hidden="true" tabindex="-1"></a><span class="co"># Summary: number of unique #1 songs per year</span></span>
+<span id="cb6-33"><a href="#cb6-33" aria-hidden="true" tabindex="-1"></a>songs_per_year <span class="ot">&lt;-</span> billboard_updated <span class="sc">|&gt;</span></span>
+<span id="cb6-34"><a href="#cb6-34" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(year) <span class="sc">|&gt;</span></span>
+<span id="cb6-35"><a href="#cb6-35" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(<span class="at">unique_no1 =</span> <span class="fu">n_distinct</span>(<span class="fu">paste0</span>(song, <span class="st">" — "</span>, artist)), <span class="at">.groups =</span> <span class="st">"drop"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
 <p>How many different songs hit #1 in 1975 vs.&nbsp;2015?</p>
 <div class="cell">
@@ -206,6 +213,157 @@ The following object is masked from 'package:readr':
 <p>Outliers: From the 1950s through 1990s, we see a gradual increase in extreme long-running hits, suggesting that blockbuster songs became slightly more common. However, the dramatic spike to 7 outliers in the 2020s is striking and suggests a fundamental shift in how the charts work in the streaming era.</p>
 <p>While it’s true that fewer songs dominate the charts in recent years, the story is more about extremes than overall shifts. Most songs still cluster around 2-3 weeks at #1 even in recent decades, but there’s an increasing tendency for certain mega-hits to stay at #1 for extraordinarily long periods (10+ weeks or even 15+ weeks based on those outliers). This creates a “winner-take-all” dynamic where streaming platforms and algorithmic recommendations may help a few songs achieve unprecedented chart dominance while the typical song’s chart tenure remains similar to earlier eras.</p>
 <p>Keeping in mind that 2020s is incomplete becuase we are still in the decade. The 2020s data is essentially showing a snapshot in progress rather than a complete picture. The fact that we already have 7 outliers in just 5 years suggests that the full decade would likely show the most extreme chart concentration of any era, with both a higher typical duration AND more mega-hits dominating for months at a time. Even with incomplete data, the 2020s are already showing unprecedented chart dominance by a small number of songs.</p>
+</section>
+<section id="marathon-hits-across-decades" class="level3">
+<h3 class="anchored" data-anchor-id="marathon-hits-across-decades">Marathon Hits Across Decades</h3>
+<p>To better understand these outliers, I wanted to identify the top 10 longest-reigning #1 songs of all time. Additionally, I was curious to examine the longest-running #1 hit from each decade to see if any songs maintained their dominance across multiple decades or if each era had its own distinct chart champions.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb12"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb12-1"><a href="#cb12-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Identify marathon hits (10+ weeks)</span></span>
+<span id="cb12-2"><a href="#cb12-2" aria-hidden="true" tabindex="-1"></a>song_runs <span class="ot">&lt;-</span> billboard_updated <span class="sc">|&gt;</span></span>
+<span id="cb12-3"><a href="#cb12-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(song, artist, weeks_at_number_one, year, decade) <span class="sc">|&gt;</span></span>
+<span id="cb12-4"><a href="#cb12-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb12-5"><a href="#cb12-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">song_id =</span> <span class="fu">paste0</span>(song, <span class="st">" — "</span>, artist),</span>
+<span id="cb12-6"><a href="#cb12-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">weeks_at_number_one =</span> <span class="fu">as.integer</span>(weeks_at_number_one)</span>
+<span id="cb12-7"><a href="#cb12-7" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb12-8"><a href="#cb12-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-9"><a href="#cb12-9" aria-hidden="true" tabindex="-1"></a>top10_alltime <span class="ot">&lt;-</span> song_runs <span class="sc">|&gt;</span></span>
+<span id="cb12-10"><a href="#cb12-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(<span class="fu">desc</span>(weeks_at_number_one)) <span class="sc">|&gt;</span></span>
+<span id="cb12-11"><a href="#cb12-11" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_head</span>(<span class="at">n =</span> <span class="dv">10</span>)</span>
+<span id="cb12-12"><a href="#cb12-12" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-13"><a href="#cb12-13" aria-hidden="true" tabindex="-1"></a>longest_per_decade <span class="ot">&lt;-</span> song_runs <span class="sc">|&gt;</span></span>
+<span id="cb12-14"><a href="#cb12-14" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(decade) <span class="sc">|&gt;</span></span>
+<span id="cb12-15"><a href="#cb12-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">slice_max</span>(weeks_at_number_one, <span class="at">n =</span> <span class="dv">1</span>, <span class="at">with_ties =</span> <span class="cn">FALSE</span>) <span class="sc">|&gt;</span></span>
+<span id="cb12-16"><a href="#cb12-16" aria-hidden="true" tabindex="-1"></a>  <span class="fu">ungroup</span>()</span>
+<span id="cb12-17"><a href="#cb12-17" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-18"><a href="#cb12-18" aria-hidden="true" tabindex="-1"></a>marathon_hits <span class="ot">&lt;-</span> song_runs <span class="sc">|&gt;</span></span>
+<span id="cb12-19"><a href="#cb12-19" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(<span class="at">type =</span> <span class="fu">ifelse</span>(weeks_at_number_one <span class="sc">&gt;=</span> <span class="dv">10</span>, <span class="st">"marathon"</span>, <span class="st">"typical"</span>))</span>
+<span id="cb12-20"><a href="#cb12-20" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb12-21"><a href="#cb12-21" aria-hidden="true" tabindex="-1"></a>marathon_hits_only <span class="ot">&lt;-</span> billboard_updated <span class="sc">|&gt;</span></span>
+<span id="cb12-22"><a href="#cb12-22" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(song, artist, date, weeks_at_number_one) <span class="sc">|&gt;</span></span>
+<span id="cb12-23"><a href="#cb12-23" aria-hidden="true" tabindex="-1"></a>  <span class="fu">mutate</span>(</span>
+<span id="cb12-24"><a href="#cb12-24" aria-hidden="true" tabindex="-1"></a>    <span class="at">month =</span> lubridate<span class="sc">::</span><span class="fu">month</span>(date),</span>
+<span id="cb12-25"><a href="#cb12-25" aria-hidden="true" tabindex="-1"></a>    <span class="at">song_id =</span> <span class="fu">paste0</span>(song, <span class="st">" — "</span>, artist),</span>
+<span id="cb12-26"><a href="#cb12-26" aria-hidden="true" tabindex="-1"></a>    <span class="at">weeks_at_number_one =</span> <span class="fu">as.integer</span>(weeks_at_number_one)</span>
+<span id="cb12-27"><a href="#cb12-27" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb12-28"><a href="#cb12-28" aria-hidden="true" tabindex="-1"></a>  <span class="fu">filter</span>(weeks_at_number_one <span class="sc">&gt;=</span> <span class="dv">10</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb13"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb13-1"><a href="#cb13-1" aria-hidden="true" tabindex="-1"></a>top10_alltime</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 10 × 6
+   song                        artist   weeks_at_number_one  year decade song_id
+   &lt;chr&gt;                       &lt;chr&gt;                  &lt;int&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;  
+ 1 Old Town Road               Lil Nas…                  19  2019   2010 Old To…
+ 2 A Bar Song (Tipsy)          Shabooz…                  19  2024   2020 A Bar …
+ 3 One Sweet Day               Mariah …                  16  1995   1990 One Sw…
+ 4 Despacito                   Luis Fo…                  16  2017   2010 Despac…
+ 5 Last Night                  Morgan …                  16  2023   2020 Last N…
+ 6 As It Was                   Harry S…                  15  2022   2020 As It …
+ 7 I Will Always Love You      Whitney…                  14  1992   1990 I Will…
+ 8 I'll Make Love to You       Boyz II…                  14  1994   1990 I'll M…
+ 9 Macarena (Bayside Boys Mix) Los del…                  14  1996   1990 Macare…
+10 Candle in the Wind 1997     Elton J…                  14  1997   1990 Candle…</code></pre>
+</div>
+</div>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb15"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb15-1"><a href="#cb15-1" aria-hidden="true" tabindex="-1"></a>longest_per_decade</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 8 × 6
+  song                      artist      weeks_at_number_one  year decade song_id
+  &lt;chr&gt;                     &lt;chr&gt;                     &lt;int&gt; &lt;dbl&gt;  &lt;dbl&gt; &lt;chr&gt;  
+1 Mack the Knife            Bobby Darin                   9  1959   1950 Mack t…
+2 Theme from A Summer Place Percy Fait…                   9  1960   1960 Theme …
+3 You Light Up My Life      Debby Boone                  10  1977   1970 You Li…
+4 Physical                  Olivia New…                  10  1981   1980 Physic…
+5 One Sweet Day             Mariah Car…                  16  1995   1990 One Sw…
+6 We Belong Together        Mariah Car…                  14  2005   2000 We Bel…
+7 Old Town Road             Lil Nas X …                  19  2019   2010 Old To…
+8 A Bar Song (Tipsy)        Shaboozey                    19  2024   2020 A Bar …</code></pre>
+</div>
+</div>
+<p>The data reveals a striking pattern of increasing chart dominance over time. While the longest-reigning #1 songs from the 1950s through 1980s peaked at just 9-10 weeks, this ceiling shattered in the 1990s when Mariah Carey’s “One Sweet Day” held the top spot for 16 weeks. The trend accelerated dramatically in the streaming era: 7 of the top 10 longest-reigning songs of all time are from 2017 or later, with the 2020s claiming the record at 19 weeks despite being an incomplete decade. Notably, the 2020s already has three songs in the all-time top 10—more than any complete decade from the 20th century. This confirms the “winner-take-all” dynamic identified earlier, where streaming platforms and algorithmic recommendations enable a small number of mega-hits to achieve unprecedented chart dominance, fundamentally transforming how songs reach and maintain the #1 position.</p>
+<p>Next, we wanted to investigate whether there are seasonal patterns in when marathon hits (songs that topped the charts for 10+ weeks) first reached #1. Specifically, we were curious if these dominant songs tend to emerge during particular times of the year, such as summer months when listening increases or the December holiday season when certain songs gain cultural momentum.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb17"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb17-1"><a href="#cb17-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Plot 2: Bar Chart of Marathon Hits by Month</span></span>
+<span id="cb17-2"><a href="#cb17-2" aria-hidden="true" tabindex="-1"></a><span class="co"># Count marathon hits per month</span></span>
+<span id="cb17-3"><a href="#cb17-3" aria-hidden="true" tabindex="-1"></a>marathon_month_counts <span class="ot">&lt;-</span> marathon_hits_only <span class="sc">|&gt;</span></span>
+<span id="cb17-4"><a href="#cb17-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">count</span>(month)</span>
+<span id="cb17-5"><a href="#cb17-5" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb17-6"><a href="#cb17-6" aria-hidden="true" tabindex="-1"></a><span class="co"># Bar chart of marathon hits by month</span></span>
+<span id="cb17-7"><a href="#cb17-7" aria-hidden="true" tabindex="-1"></a><span class="fu">ggplot</span>(marathon_month_counts, <span class="fu">aes</span>(<span class="at">x =</span> month, <span class="at">y =</span> n)) <span class="sc">+</span></span>
+<span id="cb17-8"><a href="#cb17-8" aria-hidden="true" tabindex="-1"></a>  <span class="fu">geom_col</span>(<span class="at">fill =</span> <span class="st">"steelblue"</span>, <span class="at">color =</span> <span class="st">"black"</span>, <span class="at">width =</span> <span class="fl">0.9</span>) <span class="sc">+</span></span>
+<span id="cb17-9"><a href="#cb17-9" aria-hidden="true" tabindex="-1"></a>  <span class="fu">labs</span>(</span>
+<span id="cb17-10"><a href="#cb17-10" aria-hidden="true" tabindex="-1"></a>    <span class="at">title =</span> <span class="st">"Month When Marathon Hits First Reached #1"</span>,</span>
+<span id="cb17-11"><a href="#cb17-11" aria-hidden="true" tabindex="-1"></a>    <span class="at">subtitle =</span> <span class="st">"Songs with 10+ consecutive weeks at #1"</span>,</span>
+<span id="cb17-12"><a href="#cb17-12" aria-hidden="true" tabindex="-1"></a>    <span class="at">x =</span> <span class="st">"Month"</span>,</span>
+<span id="cb17-13"><a href="#cb17-13" aria-hidden="true" tabindex="-1"></a>    <span class="at">y =</span> <span class="st">"Number of Marathon Hits"</span></span>
+<span id="cb17-14"><a href="#cb17-14" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">+</span></span>
+<span id="cb17-15"><a href="#cb17-15" aria-hidden="true" tabindex="-1"></a>  <span class="fu">theme_minimal</span>(<span class="at">base_size =</span> <span class="dv">14</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output-display">
+<div>
+<figure class="figure">
+<p><img src="results_files/figure-html/unnamed-chunk-8-1.png" class="img-fluid figure-img" width="672"></p>
+</figure>
+</div>
+</div>
+</div>
+<p>The bar chart reveals interesting seasonal patterns in when marathon hits (songs with 10+ consecutive weeks at #1) first reach the top of the charts. April and November emerge as the most successful months, each producing 6 marathon hits—significantly more than any other time of year. This bimodal distribution suggests that timing does play a role in a song’s potential for extended chart dominance, though the underlying factors differ between these two peaks.</p>
+<p>The November spike is particularly intriguing and can likely be attributed to strategic timing around the holiday season. Songs that reach #1 in November benefit from sustained listening through the holidays and into the new year, giving them momentum to maintain their position for months. However, December itself only produced 3 marathon hits, suggesting that releases during the actual holiday season face fiercer competition or stronger turnover as listeners shift to new music in January.</p>
+<p>Surprisingly, the data challenges the assumption that summer is prime time for chart-dominating hits. While June shows moderate success with 5 marathon hits, July and August produced only 3-4 each. This mixed performance suggests there’s no clear “summer song” advantage for achieving prolonged dominance, despite increased listening during warmer months.</p>
+<p>The most puzzling finding is the April peak, which produced 6 marathon hits despite lacking an obvious cultural explanation like holidays or seasonal listening patterns. Meanwhile, February, March, and September emerge as “dead zones” with only 2 marathon hits each—the lowest counts on the chart. Overall, while the data shows that timing matters, there’s no single “magic month” that guarantees a marathon hit, and the success factors appear more complex than simple seasonal listening patterns.</p>
+</section>
+<section id="looking-into-one-week-wonders" class="level3">
+<h3 class="anchored" data-anchor-id="looking-into-one-week-wonders">Looking into One Week wonders</h3>
+<p>While looking and investigating marathons which is a smalle proportion of the data thought we would be able to learn more from looking into one week wonder where a song charted only for one week. Wanted to first look what percentage of the songs only charted for one week.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb18"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb18-1"><a href="#cb18-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Calculate percentage of #1 songs with only 1 week at the top</span></span>
+<span id="cb18-2"><a href="#cb18-2" aria-hidden="true" tabindex="-1"></a>one_week_pct <span class="ot">&lt;-</span> weeks_by_song <span class="sc">|&gt;</span></span>
+<span id="cb18-3"><a href="#cb18-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb18-4"><a href="#cb18-4" aria-hidden="true" tabindex="-1"></a>    <span class="at">one_week_count =</span> <span class="fu">sum</span>(weeks_at_number_one <span class="sc">==</span> <span class="dv">1</span>, <span class="at">na.rm =</span> <span class="cn">TRUE</span>),</span>
+<span id="cb18-5"><a href="#cb18-5" aria-hidden="true" tabindex="-1"></a>    <span class="at">total_songs =</span> <span class="fu">n</span>(),</span>
+<span id="cb18-6"><a href="#cb18-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">pct =</span> one_week_count <span class="sc">/</span> total_songs <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb18-7"><a href="#cb18-7" aria-hidden="true" tabindex="-1"></a>  )</span>
+<span id="cb18-8"><a href="#cb18-8" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb18-9"><a href="#cb18-9" aria-hidden="true" tabindex="-1"></a>one_week_pct</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 1 × 3
+  one_week_count total_songs   pct
+           &lt;int&gt;       &lt;int&gt; &lt;dbl&gt;
+1            426        1177  36.2</code></pre>
+</div>
+</div>
+<p>That means roughly 1 in 3 #1 hits were “one-week wonders,” topping the chart briefly before being replaced.</p>
+<div class="cell">
+<div class="sourceCode cell-code" id="cb20"><pre class="sourceCode r code-with-copy"><code class="sourceCode r"><span id="cb20-1"><a href="#cb20-1" aria-hidden="true" tabindex="-1"></a><span class="co"># Compute summary per decade</span></span>
+<span id="cb20-2"><a href="#cb20-2" aria-hidden="true" tabindex="-1"></a>one_week_by_decade <span class="ot">&lt;-</span> billboard_updated <span class="sc">|&gt;</span></span>
+<span id="cb20-3"><a href="#cb20-3" aria-hidden="true" tabindex="-1"></a>  <span class="fu">distinct</span>(song, artist, decade, weeks_at_number_one) <span class="sc">|&gt;</span>   <span class="co"># one row per song</span></span>
+<span id="cb20-4"><a href="#cb20-4" aria-hidden="true" tabindex="-1"></a>  <span class="fu">group_by</span>(decade) <span class="sc">|&gt;</span></span>
+<span id="cb20-5"><a href="#cb20-5" aria-hidden="true" tabindex="-1"></a>  <span class="fu">summarise</span>(</span>
+<span id="cb20-6"><a href="#cb20-6" aria-hidden="true" tabindex="-1"></a>    <span class="at">total_songs =</span> <span class="fu">n</span>(),</span>
+<span id="cb20-7"><a href="#cb20-7" aria-hidden="true" tabindex="-1"></a>    <span class="at">one_week_count =</span> <span class="fu">sum</span>(weeks_at_number_one <span class="sc">==</span> <span class="dv">1</span>),</span>
+<span id="cb20-8"><a href="#cb20-8" aria-hidden="true" tabindex="-1"></a>    <span class="at">pct_one_week =</span> one_week_count <span class="sc">/</span> total_songs <span class="sc">*</span> <span class="dv">100</span></span>
+<span id="cb20-9"><a href="#cb20-9" aria-hidden="true" tabindex="-1"></a>  ) <span class="sc">|&gt;</span></span>
+<span id="cb20-10"><a href="#cb20-10" aria-hidden="true" tabindex="-1"></a>  <span class="fu">arrange</span>(decade)</span>
+<span id="cb20-11"><a href="#cb20-11" aria-hidden="true" tabindex="-1"></a></span>
+<span id="cb20-12"><a href="#cb20-12" aria-hidden="true" tabindex="-1"></a>one_week_by_decade</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
+<div class="cell-output cell-output-stdout">
+<pre><code># A tibble: 8 × 4
+  decade total_songs one_week_count pct_one_week
+   &lt;dbl&gt;       &lt;int&gt;          &lt;int&gt;        &lt;dbl&gt;
+1   1950          23              5         21.7
+2   1960         203             55         27.1
+3   1970         253            126         49.8
+4   1980         231             91         39.4
+5   1990         140             39         27.9
+6   2000         129             31         24.0
+7   2010         116             33         28.4
+8   2020          82             46         56.1</code></pre>
+</div>
+</div>
+<p>Looking across decades, the share of songs that spend only a single week at #1 reveals a striking pattern in chart behavior. In the 1950s and 1960s, one-week #1 hits were relatively rare, typically making up around a quarter or less of all chart-toppers. But in the 1970s this changed dramatically—nearly 50% of #1 songs that decade lasted only a single week, indicating much higher turnover at the top of the chart.</p>
+<p>This proportion declines again in the 1980s through the 2010s, suggesting that songs generally enjoyed longer runs at #1 during those decades. However, the 2020s reverse that trend sharply: over 56% of #1 songs so far have lasted just one week. This aligns with an era defined by rapid consumption cycles, algorithmic feeds, and social-media–driven virality, where hits can spike quickly and disappear just as fast.</p>
+<p>Interestingly, this pattern complicates the earlier hypothesis that songs now tend to dominate the charts for longer. Both things appear to be true: the longest #1 runs are getting longer (the rise of marathon hits), but simultaneously more songs are lasting only one week. In other words, chart behavior is becoming increasingly polarized—a mix of very short-lived hits and a few extremely dominant ones.</p>
+<p>To better understand these one-week wonders, we investigated their genres across the entire dataset. By examining the types of songs that only spent a single week at #1, we can identify whether certain musical styles are more prone to brief chart dominance. This helps reveal patterns in listener behavior, production trends, and how certain genres may be more likely to generate short-term viral hits versus sustained popularity.</p>
 </section>
 </section>
 
