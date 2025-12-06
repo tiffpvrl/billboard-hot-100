@@ -271,3 +271,234 @@ ggplot(genre_counts, aes(x = cdr_genre, y = count)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 
 ```
+
+### The Changing Face of #1
+
+-   How has instrumentation changed? (Suvethika)
+
+-   How has genre representation changed?
+
+-   Solo artists vs groups vs collaborations?
+
+```{r}
+# Instrumentation stuff
+```
+
+```{r}
+# Genre representation
+
+# Separate rows with multiple genres
+genres_billboard <- billboard_updated |>
+  separate_rows(discogs_genre, sep=";") |>
+  mutate(genre_sep = str_trim(discogs_genre)) |>
+  filter(genre_sep != "")
+
+# Count songs by decade and genre
+genre_counts <- genres_billboard |>
+  group_by(decade, genre_sep) |>
+  summarise(n_genre = n(), .groups = "drop")
+
+# Count unique songs per decade
+decade_totals <- billboard_updated |>
+  group_by(decade) |>
+  summarise(n_total = n(), .groups = "drop")
+
+# Calculate proportion of genre per decade
+genre_prop <- genre_counts |>
+  left_join(decade_totals, by = "decade") |>
+  mutate(proportion = n_genre/n_total)
+
+# Heatmap data
+heatmap_genre <- genre_prop |>
+  select(decade, genre_sep, proportion)
+
+# Ordering by average proportion for genres
+genre_avg <- heatmap_genre |>
+  group_by(genre_sep) |>
+  summarise(avg_prop = mean(proportion, na.rm = TRUE)) |>
+  arrange(avg_prop)
+
+heatmap_genre <- heatmap_genre |>
+  mutate(genre_sep = factor(genre_sep, levels = genre_avg$genre_sep))
+
+# Create the heatmap
+ggplot(heatmap_genre, aes(x = decade, y = genre_sep, fill = proportion)) +
+  geom_tile() +
+  scale_fill_viridis_c(name = "Genre Proportion", direction = -1) +
+  scale_x_continuous(breaks=unique(heatmap_genre$decade)) +
+  labs(
+    title = "Heatmap of Genre per Decade",
+    x = "Decade",
+    y = "Genre") +
+  theme_minimal()
+```
+
+```{r}
+# Solo artists vs groups vs collaborations
+
+library(vcd)
+library(ggmosaic)
+
+# Separating between solo, duo and group
+# Separating between feature vs no feature
+bb_artist <- billboard_updated |>
+  mutate(
+    artist_type = case_when(
+      artist_structure %in% c(0, 0.5) ~ "Group",
+      artist_structure %in% c(1, 1.5) ~ "Solo",
+      artist_structure %in% c(2, 2.5) ~ "Duo"
+    ),
+    has_feature = ifelse(artist_structure %% 1 == 0.5, "With Feature", "No Feature"),
+    artist_type = factor(artist_type, levels = c("Solo", "Duo", "Group"))
+  )
+
+# Contingency table
+artist_table <- xtabs(~ decade + artist_type + has_feature, data = bb_artist)
+
+# Mosaic Plot
+# Create mosaic plot
+# vcd::mosaic(artist_table,
+#        main = "Artist Structure and Featured Artists by Decade")
+ggplot(data = bb_artist) +
+  geom_mosaic(aes(x = product(has_feature, artist_type, decade),
+                  fill = has_feature)) +
+  labs(
+    title = "Artist Structure and Featured Artists by Decade",
+    x = "Decade",
+    y = "Artist Structure",
+    fill = "Featured Artist"
+  ) +
+  theme_mosaic() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+```
+
+### The People Behind the Curtain
+
+1.  Artists consistently #1
+2.  Songwriters and producers consistently #1
+3.  Top labels
+
+```{r}
+# Top Artists
+library(ggalluvial)
+
+# top_artists <- billboard_updated |>
+#   group_by(artist) |>
+#   summarise(n_artist = n(), .groups = "drop") |>
+#   arrange(desc(n_artist)) |>
+#   slice_head(n=20) |>
+#   pull(artist)
+
+artist_data <- billboard_updated |>
+  # filter(artist %in% top_artists) |>
+  mutate(
+    gender = case_when(
+      artist_male == 0 ~ "All Female",
+      artist_male == 1 ~ "All Male",
+      artist_male == 2 ~ "Mixed Gender",
+      artist_male == 3 ~ "Has Non-binary"
+    ),
+    race = case_when(
+      artist_white == 0 ~ "Not White",
+      artist_white == 1 ~ "White",
+      artist_white == 2 ~ "Mixed Race"
+    ),
+    songwriter = case_when(
+      artist_is_a_songwriter == 0 ~ "Not Songwriter",
+      artist_is_a_songwriter == 1 ~ "Songwriter"
+    )
+  ) |>
+  select(artist, decade, gender, race, songwriter) |>
+  distinct()
+
+artist_flows <- artist_data |>
+  count(decade, gender, race, songwriter)
+
+# Create alluvial diagram
+ggplot(artist_flows,
+       aes(axis1 = gender, axis2 = race, axis3 = songwriter, y = n)) +
+  geom_alluvium(aes(fill = gender), width = 1/12) +
+  geom_stratum(width = 1/12, fill = "white", color = "grey") +
+  geom_label(stat = "stratum", aes(label = after_stat(stratum)), size=1.5) +
+  scale_x_discrete(limits = c("Gender", "Race", "Songwriter"),
+                   expand = c(.05, .05)) +
+  scale_fill_brewer(type = "qual", palette = "Set2") +
+  labs(
+    title = "Artist Characteristics Flow",
+    y = "Count of Artists",
+    fill = "Gender"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ decade, nrow = 4, ncol = 2, scales = "free_y")
+```
+
+```{r}
+# Top Songwriters
+
+# top_songwriters <- billboard_updated |>
+#   group_by(songwriters) |>
+#   summarise(n_songwriters = n(), .groups = "drop") |>
+#   arrange(desc(n_songwriters)) |>
+#   slice_head(n=20) |>
+#   pull(songwriters) 
+
+songwriter_data <- billboard_updated |>
+  # filter(songwriters %in% top_songwriters) |>
+  mutate(
+    gender = case_when(
+      songwriter_male == 0 ~ "All Female",
+      songwriter_male == 1 ~ "All Male",
+      songwriter_male == 2 ~ "Mixed Gender",
+      songwriter_male == 3 ~ "Has Non-binary",
+    ),
+    race = case_when(
+      songwriter_white == 0 ~ "Not White",
+      songwriter_white == 1 ~ "White",
+      songwriter_white == 2 ~ "Mixed Race"
+    )
+  ) |>
+  select(songwriters, decade, gender, race) |>
+  drop_na() |>
+  distinct()
+
+songwriter_flows <- songwriter_data |>
+  count(decade, gender, race)
+
+# Create alluvial diagram
+ggplot(songwriter_flows,
+       aes(axis1 = gender, axis2 = race, y = n)) +
+  geom_alluvium(aes(fill = gender), width = 1/12) +
+  geom_stratum(width = 1/12, fill = "white", color = "grey") +
+  geom_label(stat = "stratum", aes(label = after_stat(stratum)), size=1.5) +
+  scale_x_discrete(limits = c("Gender", "Race"),
+                   expand = c(.05, .05)) +
+  scale_fill_brewer(type = "qual", palette = "Set2") +
+  labs(
+    title = "Songwriter Characteristics Flow",
+    y = "Count of Songwriter Groups",
+    fill = "Gender"
+  ) +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  facet_wrap(~ decade, nrow = 4, ncol = 2, scales = "free_y")
+```
+
+```{r}
+# Top Labels
+
+top_labels <- billboard_updated |>
+  group_by(label) |>
+  summarise(n_labels = n(), .groups = "drop") |>
+  arrange(desc(n_labels)) |>
+  slice_head(n=20)
+
+ggplot(top_labels, aes(x=n_labels, y = reorder(label, n_labels))) +
+  geom_point(size = 3, color = "steelblue") +
+  labs(
+    title = "Top 20 Labels",
+    x = "Number of Songs at #1",
+    y = "Label"
+  ) +
+  theme_minimal()
+```
