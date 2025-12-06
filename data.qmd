@@ -8,10 +8,8 @@ library(dplyr)
 library(redav)
 library(naniar)
 
-tuesdata <- tidytuesdayR::tt_load(2025, week = 34)
-
-billboard <- tuesdata$billboard
-topics <- tuesdata$topics
+billboard <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-08-26/billboard.csv')
+topics <- readr::read_csv('https://raw.githubusercontent.com/rfordatascience/tidytuesday/main/data/2025/2025-08-26/topics.csv')
 ```
 
 ## Description
@@ -154,16 +152,17 @@ producers_missing <- billboard |>
 4.  Run `discogs_scrape.py` on `billboard_genre_style_missing.csv`
 5.  Do join and coalesce
 6.  Fix missing instance of `songwriters_w_o_interpolation_sample_credits`
+7.  Write cleaned version to CSV titled "billboard_clean.csv"
 
 ```{r}
-# STEP 1
+# STEP 1: Get rid of variables with > 0.8 missing
 missing_proportions <- colMeans(is.na(billboard))
 drop_cols <- names(missing_proportions[missing_proportions > 0.8])
 
 billboard <- billboard |>
   select(-c(drop_cols))
 
-# STEP 2
+# STEP 2: Change all NA on discogs_style where discogs_genre != NA to "None"
 billboard$discogs_style <- ifelse(
   is.na(billboard$discogs_style) & !is.na(billboard$discogs_genre),
   "None",
@@ -174,7 +173,7 @@ obs_1 <- billboard |>
   filter(is.na(discogs_style) & !is.na(discogs_genre))
 dim(obs_1) # Should be 0 rows
 
-# STEP 3
+# STEP 3: Export instances where both style and genre are missing
 # Only uncomment this when reproducing
 
 # billboard_genre_style_missing <- billboard |>
@@ -190,7 +189,7 @@ dim(obs_1) # Should be 0 rows
 # Run discogs_scrape.py on billboard_genre_style_missing.csv, which will output obs_3.csv
 # obs_3.csv is on the repo
 
-# STEP 5
+# STEP 5: Join with newly scraped data
 obs_3 <- read.csv("obs_3.csv")
 
 billboard <- billboard |>
@@ -206,7 +205,7 @@ billboard <- billboard |>
   select(-discogs_genre_old, -discogs_genre_new, 
          -discogs_style_old, -discogs_style_new)
 
-# STEP 6
+# STEP 6: Fix missing instance of interpolation
 billboard$songwriters_w_o_interpolation_sample_credits <- ifelse(
   is.na(billboard$songwriters_w_o_interpolation_sample_credits),
   billboard$songwriters,
@@ -217,6 +216,10 @@ interpolation_missing <- billboard |>
   filter(is.na(songwriters_w_o_interpolation_sample_credits))
 
 dim(interpolation_missing) # Should be 0
+
+# Only uncomment when reproducing
+# STEP 7: Write cleaned billboard to CSV
+# write.csv(billboard, file = "billboard_clean.csv", row.names = FALSE)
 ```
 
 After cleaning the data, we should have:
