@@ -98,6 +98,13 @@ p_box <- ggplot(weeks_with_decade, aes(x = decade, y = weeks_at_number_one)) +
 print(p_box)
 ```
 
+- Median weeks at #1 remains consistent at ~2 weeks across all early decades
+- Medians increase slightly in 2000s-2010s, suggesting songs stay at #1 longer on average
+- Gradual increase in extreme outliers from 1950s through 1990s (blockbuster hits becoming more common)
+- 2020 already shows 7 outliers despite partial data, suggesting most extreme chart concentration of any era despite only having only 5 years of data
+
+
+
 Consistent medians (1950s-1980s): The median (thick black line) stays remarkably stable around 2 weeks at #1 across the first several decades. This means that in any of these decades, the typical #1 song held the position for about 2 weeks.
 
 Shift in recent decades (2000s-2010s): The medians appear to increase slightly, and the boxes themselves shift upward. This indicates that songs reaching #1 in recent decades tend to stay there longer on average.
@@ -164,6 +171,14 @@ ggplot(marathon_month_counts, aes(x = month, y = n)) +
   theme_minimal(base_size = 14)
 ```
 
+- April and November lead with 6 marathon hits each—significantly above other months
+- November's success likely driven by holiday season momentum carrying songs into the new year
+- April's peak lacks obvious cultural explanation, making it the most surprising finding
+- December produced only 3 marathon hits despite being peak holiday month
+- No single "magic month" guarantees marathon success—factors are more complex than seasonal listening alone
+
+
+
 The bar chart reveals interesting seasonal patterns in when marathon hits (songs with 10+ consecutive weeks at #1) first reach the top of the charts. April and November emerge as the most successful months, each producing 6 marathon hits—significantly more than any other time of year. This bimodal distribution suggests that timing does play a role in a song's potential for extended chart dominance, though the underlying factors differ between these two peaks.
 
 The November spike is particularly intriguing and can likely be attributed to strategic timing around the holiday season. Songs that reach #1 in November benefit from sustained listening through the holidays and into the new year, giving them momentum to maintain their position for months. However, December itself only produced 3 marathon hits, suggesting that releases during the actual holiday season face fiercer competition or stronger turnover as listeners shift to new music in January.
@@ -213,36 +228,9 @@ Interestingly, this pattern complicates the earlier hypothesis that songs now te
 
 To better understand these one-week wonders, we investigated their genres across the entire dataset. By examining the types of songs that only spent a single week at #1, we can identify whether certain musical styles are more prone to brief chart dominance. This helps reveal patterns in listener behavior, production trends, and how certain genres may be more likely to generate short-term viral hits versus sustained popularity.
 
-```{r}
-library(dplyr)
-library(ggplot2)
 
-# Filter only one-week #1 hits
-one_week_hits <- billboard_updated %>%
-  filter(weeks_at_number_one == 1)
-
-# Count number of one-week hits per genre
-genre_counts <- one_week_hits %>%
-  group_by(genre) %>%
-  summarise(count = n()) %>%
-  arrange(desc(count))
-
-# Optional: convert to factor so bars are ordered
-genre_counts$genre <- factor(genre_counts$genre, levels = genre_counts$genre)
-
-# Plot: Bar chart of one-week hits by genre
-ggplot(genre_counts, aes(x = genre, y = count)) +
-  geom_col(fill = "steelblue", color = "black", width = 0.8) +
-  labs(
-    title = "Genres of One-Week #1 Hits",
-    subtitle = "Songs that spent only a single week at the top of the charts",
-    x = "Genre",
-    y = "Number of One-Week Hits"
-  ) +
-  theme_minimal(base_size = 14) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
-
-```
+?? Change this to answer a different question
+doesn't seem like an interesting result
 
 ```{r}
 # Filter only one-week #1 hits
@@ -280,9 +268,94 @@ ggplot(genre_counts, aes(x = cdr_genre, y = count)) +
 
 -   Solo artists vs groups vs collaborations?
 
+
 ```{r}
-# Instrumentation stuff
+library(tidyverse)
+library(redav)
+song_vars <- billboard_updated |>
+  select(song, decade, bpm, energy, danceability, happiness, loudness_d_b,
+         acousticness, length_sec, instrumental_length_sec)
+song_vars <- song_vars |> drop_na()
+
+pca_all <- prcomp(song_vars[, 3:ncol(song_vars)], scale. = TRUE)
+round(pca_all$rotation, 5)
+pc_scores_all <- pca_all$x
+rownames(pc_scores_all) <- song_vars$song 
+pca_summary <- summary(pca_all)
+round(rbind(pc_scores_all, NA, pca_summary$importance), 5)
 ```
+
+
+```{r}
+billboard_20th <- song_vars |> filter(decade < 2000)
+billboard_21st <- song_vars |> filter(decade >= 2000)
+
+song_vars_20th <- billboard_20th |> 
+  select(bpm, energy, danceability, happiness, loudness_d_b,
+         acousticness, length_sec, instrumental_length_sec)
+
+song_vars_21st <- billboard_21st |> 
+  select(bpm, energy, danceability, happiness, loudness_d_b,
+         acousticness, length_sec, instrumental_length_sec)
+```
+
+
+```{r}
+# Plot 3
+draw_biplot(song_vars_20th, label_size = 2) +
+  ggtitle("Biplot: Songs Before 2000")
+```
+
+```{r}
+# Plot 3
+draw_biplot(song_vars_21st, label_size = 3) +
+  ggtitle("Biplot: Songs From 2000 Onward")
+```
+
+?? How do I remove the bullets? Should I keep? I am just interpreting the vectors
+
+The relationships between musical features have changed, suggesting that modern songs combine these characteristics differently than older songs.
+
+- Before 2000, danceability, energy, and loudness were strongly related.
+- Post-2000, danceability and acousticness appear uncorrelated, unlike before.
+- Before 2000, BPM and happiness were positively correlated; after 2000, they no longer align.
+
+
+
+
+```{r}
+library(GGally)
+library(ggplot2)
+
+# Convert decade to a factor
+song_vars$decade <- as.factor(song_vars$decade)
+# Plot 5
+# Parallel coordinate plot
+ggparcoord(
+  data = song_vars,
+  columns = 3:ncol(song_vars),  # numeric variables
+  groupColumn = "decade",       # color lines by decade
+  scale = "std",          # scale variables 0-1
+  showPoints = FALSE,           # optionally show points
+  alphaLines = 0.5              # transparency
+) +
+  scale_color_brewer(palette = "Set1") +
+  theme_minimal() +
+  labs(title = "Parallel Coordinate Plot of Billboard Songs by Decade",
+       x = "Song Attributes",
+       y = "Scaled Value")
+
+```
+
+?? I know she said not to make any interactive plots but it would also be helpful to see the relationships between the variables. Maybe I should just do it for myself and place the variables next to each other in an order that I can make observations
+
+When I use the std scale it reveals which decades are above/below average for each attribute.
+
+- 1960s songs have shorter length_sec.
+- 1970s songs show higher instrumental_length_sec.
+- 2000s–2020s move similarly in loudness vs. acousticness; 1960s–1970s show increased acousticness.
+- Energy, Danceability, Happiness cluster around 0 across decades, indicating consistency over time.
+
 
 ```{r}
 # Genre representation
