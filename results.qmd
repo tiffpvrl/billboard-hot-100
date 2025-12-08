@@ -1,15 +1,25 @@
-# Results
+# The Billboard Hot 100 #1 Songs: What the Top Tells Us About the Evolution of Music
 
 ```{r}
 library(tidyverse)
 library(lubridate)
-library(ggplot2)
 library(scales)
+library(redav)
+library(ggplot2)
 library(ggrepel)
+library(GGally)
+library(vcd)
+library(ggmosaic)
+library(ggalluvial)
+
 billboard <- read_csv("data/billboard_clean.csv", show_col_types = FALSE)
 ```
 
-### One Year in the Life of #1
+## 🎵 "You're Still The One" 🎵
+
+Have you ever listened to a song so good you just had to play it over and over again... for weeks? Here, we ask ourselves what that might look like in the Billboard Hot 100. Since the list is updated weekly, it is totally possible for a song to show up across multiple weeks in the span of a year. The question is: how often does that occur every decade?
+
+### Unique Songs that Hit #1 Across Decades
 
 ```{r}
 #updating billboard to include a column for year and decade
@@ -98,12 +108,10 @@ p_box <- ggplot(weeks_with_decade, aes(x = decade, y = weeks_at_number_one)) +
 print(p_box)
 ```
 
-- Median weeks at #1 remains consistent at ~2 weeks across all early decades
-- Medians increase slightly in 2000s-2010s, suggesting songs stay at #1 longer on average
-- Gradual increase in extreme outliers from 1950s through 1990s (blockbuster hits becoming more common)
-- 2020 already shows 7 outliers despite partial data, suggesting most extreme chart concentration of any era despite only having only 5 years of data
-
-
+-   Median weeks at #1 remains consistent at \~2 weeks across all early decades
+-   Medians increase slightly in 2000s-2010s, suggesting songs stay at #1 longer on average
+-   Gradual increase in extreme outliers from 1950s through 1990s (blockbuster hits becoming more common)
+-   2020 already shows 7 outliers despite partial data, suggesting most extreme chart concentration of any era despite only having only 5 years of data
 
 Consistent medians (1950s-1980s): The median (thick black line) stays remarkably stable around 2 weeks at #1 across the first several decades. This means that in any of these decades, the typical #1 song held the position for about 2 weeks.
 
@@ -115,7 +123,7 @@ While it's true that fewer songs dominate the charts in recent years, the story 
 
 Keeping in mind that 2020s is incomplete becuase we are still in the decade. The 2020s data is essentially showing a snapshot in progress rather than a complete picture. The fact that we already have 7 outliers in just 5 years suggests that the full decade would likely show the most extreme chart concentration of any era, with both a higher typical duration AND more mega-hits dominating for months at a time. Even with incomplete data, the 2020s are already showing unprecedented chart dominance by a small number of songs.
 
-### Marathon Hits Across Decades
+### Marathon Hits (Long Reigning #1s) Across Decades
 
 To better understand these outliers, I wanted to identify the top 10 longest-reigning #1 songs of all time. Additionally, I was curious to examine the longest-running #1 hit from each decade to see if any songs maintained their dominance across multiple decades or if each era had its own distinct chart champions.
 
@@ -171,13 +179,11 @@ ggplot(marathon_month_counts, aes(x = month, y = n)) +
   theme_minimal(base_size = 14)
 ```
 
-- April and November lead with 6 marathon hits each—significantly above other months
-- November's success likely driven by holiday season momentum carrying songs into the new year
-- April's peak lacks obvious cultural explanation, making it the most surprising finding
-- December produced only 3 marathon hits despite being peak holiday month
-- No single "magic month" guarantees marathon success—factors are more complex than seasonal listening alone
-
-
+-   April and November lead with 6 marathon hits each—significantly above other months
+-   November's success likely driven by holiday season momentum carrying songs into the new year
+-   April's peak lacks obvious cultural explanation, making it the most surprising finding
+-   December produced only 3 marathon hits despite being peak holiday month
+-   No single "magic month" guarantees marathon success—factors are more complex than seasonal listening alone
 
 The bar chart reveals interesting seasonal patterns in when marathon hits (songs with 10+ consecutive weeks at #1) first reach the top of the charts. April and November emerge as the most successful months, each producing 6 marathon hits—significantly more than any other time of year. This bimodal distribution suggests that timing does play a role in a song's potential for extended chart dominance, though the underlying factors differ between these two peaks.
 
@@ -187,7 +193,7 @@ Surprisingly, the data challenges the assumption that summer is prime time for c
 
 The most puzzling finding is the April peak, which produced 6 marathon hits despite lacking an obvious cultural explanation like holidays or seasonal listening patterns. Meanwhile, February, March, and September emerge as "dead zones" with only 2 marathon hits each—the lowest counts on the chart. Overall, while the data shows that timing matters, there's no single "magic month" that guarantees a marathon hit, and the success factors appear more complex than simple seasonal listening patterns.
 
-### Looking into One Week wonders
+### One Week Wonders Across Decades
 
 While looking and investigating marathons which is a smalle proportion of the data thought we would be able to learn more from looking into one week wonder where a song charted only for one week. Wanted to first look what percentage of the songs only charted for one week.
 
@@ -228,9 +234,7 @@ Interestingly, this pattern complicates the earlier hypothesis that songs now te
 
 To better understand these one-week wonders, we investigated their genres across the entire dataset. By examining the types of songs that only spent a single week at #1, we can identify whether certain musical styles are more prone to brief chart dominance. This helps reveal patterns in listener behavior, production trends, and how certain genres may be more likely to generate short-term viral hits versus sustained popularity.
 
-
-?? Change this to answer a different question
-doesn't seem like an interesting result
+?? Change this to answer a different question doesn't seem like an interesting result
 
 ```{r}
 # Filter only one-week #1 hits
@@ -260,18 +264,15 @@ ggplot(genre_counts, aes(x = cdr_genre, y = count)) +
 
 ```
 
-### The Changing Face of #1
+---------------------------------------------------------------------
 
--   How has instrumentation changed? (Suvethika)
+## 🎵 "I've Been Afraid of Changing" 🎵
 
--   How has genre representation changed?
+The world looks different now in 2025 than it did in 1950, and so did the music we listen to. Here, we explore how music has changed across decades. Do they sound different musically? Are we using different instruments than we did 70 years ago? Are we listening to more singer-songwriters than bands?
 
--   Solo artists vs groups vs collaborations?
-
+### Instrumentation and Sound Evolution
 
 ```{r}
-library(tidyverse)
-library(redav)
 song_vars <- billboard_updated |>
   select(song, decade, bpm, energy, danceability, happiness, loudness_d_b,
          acousticness, length_sec, instrumental_length_sec)
@@ -285,7 +286,6 @@ pca_summary <- summary(pca_all)
 round(rbind(pc_scores_all, NA, pca_summary$importance), 5)
 ```
 
-
 ```{r}
 billboard_20th <- song_vars |> filter(decade < 2000)
 billboard_21st <- song_vars |> filter(decade >= 2000)
@@ -298,7 +298,6 @@ song_vars_21st <- billboard_21st |>
   select(bpm, energy, danceability, happiness, loudness_d_b,
          acousticness, length_sec, instrumental_length_sec)
 ```
-
 
 ```{r}
 # Plot 3
@@ -316,17 +315,11 @@ draw_biplot(song_vars_21st, label_size = 3) +
 
 The relationships between musical features have changed, suggesting that modern songs combine these characteristics differently than older songs.
 
-- Before 2000, danceability, energy, and loudness were strongly related.
-- Post-2000, danceability and acousticness appear uncorrelated, unlike before.
-- Before 2000, BPM and happiness were positively correlated; after 2000, they no longer align.
-
-
-
+-   Before 2000, danceability, energy, and loudness were strongly related.
+-   Post-2000, danceability and acousticness appear uncorrelated, unlike before.
+-   Before 2000, BPM and happiness were positively correlated; after 2000, they no longer align.
 
 ```{r}
-library(GGally)
-library(ggplot2)
-
 # Convert decade to a factor
 song_vars$decade <- as.factor(song_vars$decade)
 # Plot 5
@@ -351,11 +344,12 @@ ggparcoord(
 
 When I use the std scale it reveals which decades are above/below average for each attribute.
 
-- 1960s songs have shorter length_sec.
-- 1970s songs show higher instrumental_length_sec.
-- 2000s–2020s move similarly in loudness vs. acousticness; 1960s–1970s show increased acousticness.
-- Energy, Danceability, Happiness cluster around 0 across decades, indicating consistency over time.
+-   1960s songs have shorter length_sec.
+-   1970s songs show higher instrumental_length_sec.
+-   2000s–2020s move similarly in loudness vs. acousticness; 1960s–1970s show increased acousticness.
+-   Energy, Danceability, Happiness cluster around 0 across decades, indicating consistency over time.
 
+### Evolution of Genre Across Decades
 
 ```{r}
 # Genre representation
@@ -406,11 +400,10 @@ ggplot(heatmap_genre, aes(x = decade, y = genre_sep, fill = proportion)) +
   theme_minimal()
 ```
 
+### Solo/Duo/Group Artists vs Featured Collaborations
+
 ```{r}
 # Solo artists vs groups vs collaborations
-
-library(vcd)
-library(ggmosaic)
 
 # Separating between solo, duo and group
 # Separating between feature vs no feature
@@ -445,15 +438,16 @@ ggplot(data = bb_artist) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1))
 ```
 
-### The People Behind the Curtain
+-------------------------------------------------------------
 
-1.  Artists consistently #1
-2.  Songwriters and producers consistently #1
-3.  Top labels
+## 🎵 "Say My Name, Say My Name" 🎵
+
+The songs we listen to might sound different now, but could it be because of the people behind the curtain? Here, we pay homage to the artists, songwriters, and producers working hard behind the scenes to give us the songs that eventually show up as #1 in the Billboard Hot 100. How have they changed across decades?
+
+### Top Artists Over the Decades
 
 ```{r}
 # Top Artists
-library(ggalluvial)
 
 # top_artists <- billboard_updated |>
 #   group_by(artist) |>
@@ -506,6 +500,8 @@ ggplot(artist_flows,
   facet_wrap(~ decade, nrow = 4, ncol = 2, scales = "free_y")
 ```
 
+### Top Songwriters Over the Decades
+
 ```{r}
 # Top Songwriters
 
@@ -556,6 +552,8 @@ ggplot(songwriter_flows,
   theme(legend.position = "bottom") +
   facet_wrap(~ decade, nrow = 4, ncol = 2, scales = "free_y")
 ```
+
+### Top 20 Labels of All Time
 
 ```{r}
 # Top Labels
