@@ -11,6 +11,7 @@ library(GGally)
 library(vcd)
 library(ggmosaic)
 library(ggalluvial)
+library(patchwork)
 
 billboard <- read_csv("data/billboard_clean.csv", show_col_types = FALSE)
 ```
@@ -264,7 +265,7 @@ ggplot(genre_counts, aes(x = cdr_genre, y = count)) +
 
 ```
 
----------------------------------------------------------------------
+------------------------------------------------------------------------
 
 ## 🎵 "I've Been Afraid of Changing" 🎵
 
@@ -351,6 +352,8 @@ When I use the std scale it reveals which decades are above/below average for ea
 
 ### Evolution of Genre Across Decades
 
+When I think 1960s-70s, I think of rock as the defining music genre of that time. When I think 2010-2020s, I think of indie, hip-hop, and pop. But will this reflect in the Billboard Hot 100? To test my hypothesis, I create a heatmap of the proportion of genres of #1 songs for each decade. Since songs could have more than one genre, I define the proportion of a genre as how many times a genre appeared in that decade divided by the total number of songs that appeared in that decade.
+
 ```{r}
 # Genre representation
 
@@ -391,16 +394,22 @@ heatmap_genre <- heatmap_genre |>
 # Create the heatmap
 ggplot(heatmap_genre, aes(x = decade, y = genre_sep, fill = proportion)) +
   geom_tile() +
-  scale_fill_viridis_c(name = "Genre Proportion", direction = -1) +
+  scale_fill_distiller(palette = "RdPu", direction = 1, name = "Genre Proportion") +
+  # scale_fill_viridis_c(name = "Genre Proportion", direction = -1) +
   scale_x_continuous(breaks=unique(heatmap_genre$decade)) +
   labs(
     title = "Heatmap of Genre per Decade",
+    subtitle = "In decreasing order of average proportion",
     x = "Decade",
     y = "Genre") +
   theme_minimal()
 ```
 
+The heat map above shows us that Pop has always been a popular (haha) genre, which is not surprising. It lost to Rock as the genre with the most #1 songs in the 60s and 70s, though. We also see that Hip Hop as a genre did not even show up in any of the #1 songs until the 1980s, and since then has consistently charted, with the peak being in the 2000s. Almost opposite to Hip Hop is Rock, which was prominent in the 50s to 80s, but quickly lost its popularity from the 1990s onwards.
+
 ### Solo/Duo/Group Artists vs Featured Collaborations
+
+Just like I picture the 60s and 70s to be the defining decades for Rock, I also picture the 60s and 70s to be the defining decades for bands. Names like "The Beatles" and "Fleetwood Mac" - both bands - come to mind as prominent artists of that era, whereas names like "Taylor Swift" and "Ariana Grande" - solo artists - come to mind as prominent artists of the era we are in right now. To test this hypothesis, I create a mosaic plot that shows us the distribution of artist structure (group, duo, solo) and featured collaborations per decade.
 
 ```{r}
 # Solo artists vs groups vs collaborations
@@ -415,161 +424,201 @@ bb_artist <- billboard_updated |>
       artist_structure %in% c(2, 2.5) ~ "Duo"
     ),
     has_feature = ifelse(artist_structure %% 1 == 0.5, "With Feature", "No Feature"),
-    artist_type = factor(artist_type, levels = c("Solo", "Duo", "Group"))
+    artist_type = factor(artist_type, levels = c("Group", "Duo", "Solo")),
+    era_detailed = case_when(
+      decade < 1990 ~ "Before 1990", 
+      decade >= 1990 & decade < 2010 ~ "1990-2009",
+      decade >= 2010 ~ "2010-2025"
+      ),
+    era_detailed = factor(era_detailed, levels = c("Before 1990", "1990-2009", "2010-2025"))
   )
 
-# Contingency table
-artist_table <- xtabs(~ decade + artist_type + has_feature, data = bb_artist)
-
-# Mosaic Plot
-# Create mosaic plot
-# vcd::mosaic(artist_table,
-#        main = "Artist Structure and Featured Artists by Decade")
-ggplot(data = bb_artist) +
-  geom_mosaic(aes(x = product(has_feature, artist_type, decade),
-                  fill = has_feature)) +
-  labs(
-    title = "Artist Structure and Featured Artists by Decade",
-    x = "Decade",
-    y = "Artist Structure",
-    fill = "Featured Artist"
+# Stacked bar chart with artist structure
+structure_chart <- ggplot(data = bb_artist, aes(x = decade, fill = artist_type)) +
+  geom_bar(position = "fill") +
+  scale_x_continuous(breaks = unique(bb_artist$decade), trans = "reverse") +
+  scale_fill_manual(
+    values = c("Solo" = "lightsteelblue2", "Duo" = "lightsteelblue3", "Group" = "lightsteelblue4"),
+    name = "Artist Structure"
   ) +
-  theme_mosaic() +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+  labs(
+    title = "How Has Artist Structure Changed Across Decades?",
+    x = "Decade",
+    y = "Song Proportion"
+  ) +
+  coord_flip()
+
+
+# Stacked bar chart with artist feature
+feature_chart <- ggplot(data = bb_artist, aes(x = era_detailed, fill = has_feature)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(
+    values = c("With Feature" = "red4", "No Feature" = "lightgoldenrod"),
+    name = "Feature"
+  ) +
+  labs(
+    title = "How Have Music Collaborations Changed?",
+    x = "Era",
+    y = "Proportion of Features"
+  )
+
+structure_chart + feature_chart
 ```
 
--------------------------------------------------------------
+These two stacked bar charts confirm my hypothesis. Firstly, it shows us that group artists are slowly becoming less popular every decade. In the 1960s, group artists made up most of the #1 songs, where now, it is dominated by solo artists. Secondly, it shows us that virtually no featured collaborations made it to #1 before the 1990s, which is consistent with a [2018 report from The Economist](https://www.economist.com/graphic-detail/2018/02/02/popular-music-is-more-collaborative-than-ever) telling us that collaboration in music is a relatively recent phenomena.
+
+------------------------------------------------------------------------
 
 ## 🎵 "Say My Name, Say My Name" 🎵
 
 The songs we listen to might sound different now, but could it be because of the people behind the curtain? Here, we pay homage to the artists, songwriters, and producers working hard behind the scenes to give us the songs that eventually show up as #1 in the Billboard Hot 100. How have they changed across decades?
 
-### Top Artists Over the Decades
+### Top Artists Over the Years
+
+Our data spans 1950 to 2025, so I am interested in looking at the top artists of all time (artists that have the most songs at #1 in the Billboard Hot 100) and what years they were popular. For instance, were The Beatles only popular for a certain time or do they have songs that are #1 even now?
 
 ```{r}
-# Top Artists
+# Get top 20 artists
+top_20_artists <- billboard_updated |>
+  count(artist, sort = TRUE) |>
+  slice_head(n = 20) |>
+  pull(artist)
 
-# top_artists <- billboard_updated |>
-#   group_by(artist) |>
-#   summarise(n_artist = n(), .groups = "drop") |>
-#   arrange(desc(n_artist)) |>
-#   slice_head(n=20) |>
-#   pull(artist)
+# Get first and last year for each artist
+artist_timeline <- billboard_updated |>
+  filter(artist %in% top_20_artists) |>
+  group_by(artist) |>
+  summarise(
+    first_year = min(year, na.rm = TRUE),
+    last_year = max(year, na.rm = TRUE),
+    n_songs = n()
+  ) |>
+  arrange(first_year, desc(n_songs)) |>
+  mutate(artist = factor(artist, levels = rev(artist)))
 
+# Get individual songs for points
+artist_songs <- billboard_updated |>
+  filter(artist %in% top_20_artists) |>
+  select(artist, year) |>
+  left_join(artist_timeline |> select(artist), by = "artist") |>
+  mutate(artist = factor(artist, levels = levels(artist_timeline$artist)))
+
+# Create timeline plot
+ggplot(artist_timeline, aes(y = artist)) +
+  geom_segment(aes(x = first_year, xend = last_year, yend = artist),
+               alpha = 1, size = 0.5, color = "black") +
+  geom_point(data = artist_songs, aes(x = year, y = artist), 
+             color = "maroon", alpha = 0.5, size = 4) +
+  labs(
+    title = "Active Years for Top 20 Artists with #1 Songs",
+    subtitle = "Each dot represents a song that charted as #1",
+    x = "Year",
+    y = "Artist"
+  ) +
+  theme_minimal() +
+  theme(
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor = element_blank()
+  )
+```
+
+The chart above takes the top 20 artists of all time and marks the first year and the most recent year in which their song hit #1. While most of these artists are not popular for more than 10 years, there are some interesting anomalies. Mariah Carey, for example, first hit #1 in the mid 1990s and last hit #1 in 2019, although it looks she was more consistently popular in the 1990s, falling off after 2000. The Beatles and The Supremes have almost the opposite story, with their reign of popularity only taking up a few years despite having many more songs hit #1.
+
+### Are #1 Artists & Songwriters Becoming More Diverse?
+
+With more and more opportunities being presented to artists of color and women artists over the years, I would imagine there being a stark difference between the gender and race distribution of #1 artists now than in 1950. I test this hypothesis by creating two mosaic plots exploring the effect of gender and race on era (defined as before 1990 and after 1990).
+
+```{r}
+# Artist Gender and Race
 artist_data <- billboard_updated |>
-  # filter(artist %in% top_artists) |>
   mutate(
     gender = case_when(
       artist_male == 0 ~ "All Female",
       artist_male == 1 ~ "All Male",
-      artist_male == 2 ~ "Mixed Gender",
-      artist_male == 3 ~ "Has Non-binary"
+      artist_male == 2 | artist_male == 3 ~ "Mixed Gender"
     ),
     race = case_when(
       artist_white == 0 ~ "Not White",
       artist_white == 1 ~ "White",
       artist_white == 2 ~ "Mixed Race"
     ),
-    songwriter = case_when(
-      artist_is_a_songwriter == 0 ~ "Not Songwriter",
-      artist_is_a_songwriter == 1 ~ "Songwriter"
-    )
+    era_detailed = case_when(
+      decade < 1990 ~ "Before 1990", 
+      decade >= 1990 ~ "After 1990"
+      ),
+    era_detailed = factor(era_detailed, levels = c("Before 1990", "After 1990")),
+    gender = factor(gender, levels = c("All Male", "All Female", "Mixed Gender"))
   ) |>
-  select(artist, decade, gender, race, songwriter) |>
+  select(artist, decade, gender, race, era_detailed) |>
   distinct()
 
-artist_flows <- artist_data |>
-  count(decade, gender, race, songwriter)
+# define grayscale palette
+shades <- c("Mixed Race" = gray(0.8), 
+            "Not White" = gray(0.5), 
+            "White" = gray(0.2))
 
-# Create alluvial diagram
-ggplot(artist_flows,
-       aes(axis1 = gender, axis2 = race, axis3 = songwriter, y = n)) +
-  geom_alluvium(aes(fill = gender), width = 1/12) +
-  geom_stratum(width = 1/12, fill = "white", color = "grey") +
-  geom_label(stat = "stratum", aes(label = after_stat(stratum)), size=1.5) +
-  scale_x_discrete(limits = c("Gender", "Race", "Songwriter"),
-                   expand = c(.05, .05)) +
-  scale_fill_brewer(type = "qual", palette = "Set2") +
-  labs(
-    title = "Artist Characteristics Flow",
-    y = "Count of Artists",
-    fill = "Gender"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ decade, nrow = 4, ncol = 2, scales = "free_y")
+vcd::mosaic(~era_detailed + gender + race,
+       data = artist_data,
+       direction = c("v", "v", "h"),
+       main = "Artist Gender and Race Interaction",
+       highlighting = "race",
+       highlighting_fill = shades,
+       main_gp = gpar(fontsize = 12),
+       labeling_args = list(
+         gp_labels = gpar(fontsize = 5),   # Adjust category label font size
+         gp_varnames = gpar(fontsize = 7) # Adjust variable names font size
+       ))
 ```
 
-### Top Songwriters Over the Decades
+The mosaic plot above confirms my hypothesis and shows us that, before 1990, "All Male" seemed to take up the biggest proportion of artists, with more than 2/3 of these male artists being white. "All Female" and "Mixed Gender" artists had similar proportions, but both were still overwhelmingly white.
+
+After 1990, it still looks like "All Male" artists dominate #1 compared to "All Female" and "Mixed Gender" artists, but the distribution of race makes a dramatic 180. Now, half of the male artists are not white, compared to before 1990 where not white artists only made up less than 1/3 of all male artists. This is a huge improvement for the distribution of race in our #1 artists!
 
 ```{r}
 # Top Songwriters
-
-# top_songwriters <- billboard_updated |>
-#   group_by(songwriters) |>
-#   summarise(n_songwriters = n(), .groups = "drop") |>
-#   arrange(desc(n_songwriters)) |>
-#   slice_head(n=20) |>
-#   pull(songwriters) 
-
 songwriter_data <- billboard_updated |>
-  # filter(songwriters %in% top_songwriters) |>
   mutate(
     gender = case_when(
       songwriter_male == 0 ~ "All Female",
       songwriter_male == 1 ~ "All Male",
-      songwriter_male == 2 ~ "Mixed Gender",
-      songwriter_male == 3 ~ "Has Non-binary",
+      songwriter_male == 2 | songwriter_male == 3 ~ "Mixed Gender"
     ),
     race = case_when(
       songwriter_white == 0 ~ "Not White",
       songwriter_white == 1 ~ "White",
       songwriter_white == 2 ~ "Mixed Race"
-    )
+    ),
+    era_detailed = case_when(
+      decade < 1990 ~ "Before 1990", 
+      decade >= 1990 ~ "After 1990"
+      ),
+    era_detailed = factor(era_detailed, levels = c("Before 1990", "After 1990")),
+    gender = factor(gender, levels = c("All Male", "All Female", "Mixed Gender"))
   ) |>
-  select(songwriters, decade, gender, race) |>
+  select(songwriters, gender, race, era_detailed) |>
   drop_na() |>
   distinct()
 
-songwriter_flows <- songwriter_data |>
-  count(decade, gender, race)
+# define grayscale palette
+shades <- c("Mixed Race" = gray(0.8), 
+            "Not White" = gray(0.5), 
+            "White" = gray(0.2))
 
-# Create alluvial diagram
-ggplot(songwriter_flows,
-       aes(axis1 = gender, axis2 = race, y = n)) +
-  geom_alluvium(aes(fill = gender), width = 1/12) +
-  geom_stratum(width = 1/12, fill = "white", color = "grey") +
-  geom_label(stat = "stratum", aes(label = after_stat(stratum)), size=1.5) +
-  scale_x_discrete(limits = c("Gender", "Race"),
-                   expand = c(.05, .05)) +
-  scale_fill_brewer(type = "qual", palette = "Set2") +
-  labs(
-    title = "Songwriter Characteristics Flow",
-    y = "Count of Songwriter Groups",
-    fill = "Gender"
-  ) +
-  theme_minimal() +
-  theme(legend.position = "bottom") +
-  facet_wrap(~ decade, nrow = 4, ncol = 2, scales = "free_y")
+vcd::mosaic(~era_detailed + gender + race,
+       data = songwriter_data,
+       direction = c("v", "v", "h"),
+       main = "Songwriter Gender and Race Interaction",
+       highlighting = "race",
+       highlighting_fill = shades,
+       main_gp = gpar(fontsize = 12),
+       labeling_args = list(
+         gp_labels = gpar(fontsize = 5),   # Adjust category label font size
+         gp_varnames = gpar(fontsize = 7) # Adjust variable names font size
+       ))
 ```
 
-### Top 20 Labels of All Time
+For songwriters, it looks like before 1990, it was dominated by songwriting groups of all white males.
 
-```{r}
-# Top Labels
+After 1990, however, we once again see a big improvement. We now have a more even split between songwriting groups that are all male and mixed gender (all female groups are extremely rare, apparently). Within both male and mixed gender groups, we see a more even split between mixed race, not white, and white songwriters. Interestingly, both all male and mixed gender groups are dominated by mixed race songwriters!
 
-top_labels <- billboard_updated |>
-  group_by(label) |>
-  summarise(n_labels = n(), .groups = "drop") |>
-  arrange(desc(n_labels)) |>
-  slice_head(n=20)
-
-ggplot(top_labels, aes(x=n_labels, y = reorder(label, n_labels))) +
-  geom_point(size = 3, color = "steelblue") +
-  labs(
-    title = "Top 20 Labels",
-    x = "Number of Songs at #1",
-    y = "Label"
-  ) +
-  theme_minimal()
-```
+From the two mosaic plots above, we can conclude that we are indeed seeing a big jump in diversity in the artists and songwriters behind our #1 songs in the Billboard Hot 100. A win for the music industry!
