@@ -7,8 +7,6 @@ from discogs_api import api_token
 
 
 API_TOKEN = api_token() # Insert your own api_token here
-
-API_TOKEN = 'xVyuevzgElHVficnEuoMABcLszGrnkJFsOhnnJCR'
 headers = {
     'Authorization': f'Discogs token={API_TOKEN}',
     'User-Agent': 'YourAppName/1.0'
