@@ -3,6 +3,10 @@ import time
 import csv
 import os
 import re
+from discogs_api import api_token
+
+
+API_TOKEN = api_token() # Insert your own api_token here
 
 API_TOKEN = 'xVyuevzgElHVficnEuoMABcLszGrnkJFsOhnnJCR'
 headers = {
