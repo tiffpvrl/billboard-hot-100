@@ -6,11 +6,11 @@ execute:
   echo: true
 
 book:
-  title: "YOUR PROJECT TITLE"
+  title: "The Billboard Hot 100 #1 Songs: What the Top Tells Us About the Evolution of Music"
   author:
-    - AUTHOR1 (UNI1)
-    - AUTHOR2 (UNI2)
-  repo-url: https://github.com/YOUR_GITHUB_ACCOUNT/REPO_NAME
+    - Tiffany Peverilla (tp2906)
+    - Suvethika Kandasamy Mohana (sk5697)
+  repo-url: https://github.com/tiffpvrl/billboard-hot-100
   date: today
   page-footer:
     right: |
