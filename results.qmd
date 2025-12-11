@@ -394,8 +394,8 @@ heatmap_genre <- heatmap_genre |>
 # Create the heatmap
 ggplot(heatmap_genre, aes(x = decade, y = genre_sep, fill = proportion)) +
   geom_tile() +
-  scale_fill_distiller(palette = "RdPu", direction = 1, name = "Genre Proportion") +
-  # scale_fill_viridis_c(name = "Genre Proportion", direction = -1) +
+  scale_fill_gradient(low="lightsteelblue1", high = "royalblue4", name = "Genre Proportion") +
+  # scale_fill_distiller(palette = "Blues", direction = 1, name = "Genre Proportion") +
   scale_x_continuous(breaks=unique(heatmap_genre$decade)) +
   labs(
     title = "Heatmap of Genre per Decade",
@@ -453,7 +453,7 @@ structure_chart <- ggplot(data = bb_artist, aes(x = decade, fill = artist_type))
 feature_chart <- ggplot(data = bb_artist, aes(x = era_detailed, fill = has_feature)) +
   geom_bar(position = "fill") +
   scale_fill_manual(
-    values = c("With Feature" = "red4", "No Feature" = "lightgoldenrod"),
+    values = c("With Feature" = "indianred4", "No Feature" = "indianred3"),
     name = "Feature"
   ) +
   labs(
@@ -508,7 +508,7 @@ ggplot(artist_timeline, aes(y = artist)) +
   geom_segment(aes(x = first_year, xend = last_year, yend = artist),
                alpha = 1, size = 0.5, color = "black") +
   geom_point(data = artist_songs, aes(x = year, y = artist), 
-             color = "maroon", alpha = 0.5, size = 4) +
+             color = "royalblue4", alpha = 0.5, size = 4) +
   labs(
     title = "Active Years for Top 20 Artists with #1 Songs",
     subtitle = "Each dot represents a song that charted as #1",
@@ -553,9 +553,9 @@ artist_data <- billboard_updated |>
   distinct()
 
 # define grayscale palette
-shades <- c("Mixed Race" = gray(0.8), 
-            "Not White" = gray(0.5), 
-            "White" = gray(0.2))
+shades <- c("Mixed Race" = "plum", 
+            "Not White" = "lightsteelblue2", 
+            "White" = "indianred4")
 
 vcd::mosaic(~era_detailed + gender + race,
        data = artist_data,
@@ -600,9 +600,9 @@ songwriter_data <- billboard_updated |>
   distinct()
 
 # define grayscale palette
-shades <- c("Mixed Race" = gray(0.8), 
-            "Not White" = gray(0.5), 
-            "White" = gray(0.2))
+shades <- c("Mixed Race" = "plum", 
+            "Not White" = "lightblue", 
+            "White" = "indianred4")
 
 vcd::mosaic(~era_detailed + gender + race,
        data = songwriter_data,
