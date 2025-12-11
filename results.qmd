@@ -413,7 +413,7 @@ structure_chart <- ggplot(data = bb_artist, aes(x = decade, fill = artist_type))
     name = "Artist Structure"
   ) +
   labs(
-    title = "How Has Artist Structure Changed Across Decades?",
+    title = "How Has Artist Structure Changed?",
     x = "Decade",
     y = "Song Proportion"
   ) +
@@ -431,6 +431,24 @@ feature_chart <- ggplot(data = bb_artist, aes(x = era_detailed, fill = has_featu
     title = "How Have Music Collaborations Changed?",
     x = "Era",
     y = "Proportion of Features"
+  )
+
+structure_chart <- structure_chart +
+  theme(
+    plot.title = element_text(size = 9),
+    axis.text = element_text(size = 8),
+    axis.title = element_text(size = 9),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9)
+  )
+
+feature_chart <- feature_chart +
+  theme(
+    plot.title = element_text(size = 9),
+    axis.text = element_text(size = 6),
+    axis.title = element_text(size = 9),
+    legend.text = element_text(size = 8),
+    legend.title = element_text(size = 9)
   )
 
 structure_chart + feature_chart
