@@ -128,10 +128,11 @@ To answer that, I looked at two things:
 ```{r}
 # Identify marathon hits (10+ weeks)
 song_runs <- billboard_updated |>
-  distinct(song, artist, weeks_at_number_one, year, decade) |>
+  distinct(song, artist, weeks_at_number_one, year, decade, date) |>
   mutate(
     song_id = paste0(song, " — ", artist),
-    weeks_at_number_one = as.integer(weeks_at_number_one)
+    weeks_at_number_one = as.integer(weeks_at_number_one),
+    month = month(date, label = TRUE, abbr = TRUE)
   )
 
 top10_alltime <- song_runs |>
@@ -145,6 +146,9 @@ longest_per_decade <- song_runs |>
 
 marathon_hits <- song_runs |>
   mutate(type = ifelse(weeks_at_number_one >= 10, "marathon", "typical"))
+
+marathon_hits_only <- marathon_hits |>
+  filter(type == "marathon")
 ```
 
 ```{r}
