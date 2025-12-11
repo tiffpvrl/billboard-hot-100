@@ -22,6 +22,8 @@ Have you ever listened to a song so good you just had to play it over and over a
 
 ### Unique Songs that Hit #1 Across Decades
 
+First, we look at how many unique songs hit #1 per year. This will tell us how many songs each year were long-reigning (i.e. on the #1 spot for weeks) or not.
+
 ```{r}
 #updating billboard to include a column for year and decade
 billboard_updated <- billboard |>
@@ -33,34 +35,13 @@ billboard_updated <- billboard |>
   select(-date) |>  # Remove old date column
   rename(date = date_clean)  # Rename back to date
 
-
-week_level <- billboard_updated |>
-  # Create a vector of Date objects, one for each week the song was #1.
-  # map2() applies a function to (date, weeks_at_number_one) row-by-row.
-  # seq.Date() generates weekly sequences like: date, date+7, date+14, ...
-  mutate(week_dates = map2(
-    .data$date, 
-    weeks_at_number_one,
-    ~ seq.Date(as_date(.x), by = "week", length.out = .y)
-  )) |>
-  # Expand the list-column `week_dates` so each row becomes one weekly observation.
-  unnest(cols = c(week_dates)) |>
-  rename(chart_date = week_dates) |>
-  # Extract additional useful time components from the chart week
-  mutate(
-    year = year(chart_date),
-    week_of_year = isoweek(chart_date),
-    song_id = paste0(song, " — ", artist)
-  ) |>
-  arrange(chart_date)
-
 # Summary: number of unique #1 songs per year
 songs_per_year <- billboard_updated |>
   group_by(year) |>
   summarise(unique_no1 = n_distinct(paste0(song, " — ", artist)), .groups = "drop")
 ```
 
-How many different songs hit #1 in 1975 vs. 2015?
+Just as a litmust test, we ask: how many different songs hit #1 in 1975 vs. 2015?
 
 ```{r}
 # Print numbers for 1975 vs 2015
@@ -70,12 +51,12 @@ cat("Unique #1 songs in 1975:", ifelse(length(val_1975)==0, NA, val_1975), "\n")
 cat("Unique #1 songs in 2015:", ifelse(length(val_2015)==0, NA, val_2015), "\n")
 ```
 
-That’s a huge drop. My guess? With streaming, viral trends, and global platforms like TikTok, a single breakout hit can dominate for months instead of passing the crown every week like songs often did in the past.
+That’s a huge drop. Our guess? With streaming, viral trends, and global platforms like TikTok, a single breakout hit can dominate for months instead of passing the crown every week like songs often did in the past.
 
-To see this trend more clearly, I visualize how long songs stay at #1 using a boxplot across decades.
+To see this trend more clearly, we visualize how long songs stay at #1 using a boxplot across decades.
 
 ```{r}
-# Plot 1: Box plot of weeks at #1 across decades
+# Box plot of weeks at #1 across decades
 # Ensure each song has a single decade (counts the first decade it shows up in)
 billboard_unique <- billboard_updated |>
   group_by(song) |>
@@ -104,26 +85,28 @@ p_box <- ggplot(weeks_with_decade, aes(x = decade, y = weeks_at_number_one)) +
 
 print(p_box)
 ```
+
 As expected from the 1950s through the 1990s, the median #1 song stayed at the top for only about 2 weeks. Lots of turnover, lots of variety.
 
-Starting in the 2000s, the median creeps upward—songs begin hanging onto the top spot a bit longer on average. This tracks with the rise of digital downloads, early streaming, and algorithm-driven discovery.
+Starting in the 2000s, the median creeps upward; songs begin hanging onto the top spot a bit longer on average. This tracks with the rise of digital downloads, early streaming, and algorithm-driven discovery.
 
 Extreme outliers (those mega-hits that stay #1 for 10, 12, 16+ weeks) slowly increase from the 1950s through the 1990s, showing that “dominant hits” were becoming a bigger part of the chart long before streaming arrived.
 
-Even with only five years of data, the 2020s already show seven outlier songs, the most of any decade so far. This suggests the most concentrated chart dominance we’ve ever seen—exactly what you'd expect in a hyper-viral, algorithm-powered music world.
+Even with only five years of data, the 2020s already show seven outlier songs, the most of any decade so far. This suggests the most concentrated chart dominance we’ve ever seen, which is exactly what you'd expect in a hyper-viral, algorithm-powered music world.
 
-## 🎵“Don’t Stop the Music”🎵
+## 🎵 “Don’t Stop the Music” 🎵
 
-###The Reign of Marathon #1 Hits
+### The Reign of Marathon #1 Hits
 
-Some songs don’t just hit #1—they move in, unpack their bags, and make themselves comfortable. These marathon hits linger at the top of the Billboard Hot 100 for weeks, sometimes months, becoming the soundtrack of entire seasons.
+Some songs don’t just hit #1 - they move in, unpack their bags, and make themselves comfortable. These marathon hits linger at the top of the Billboard Hot 100 for weeks, sometimes months, becoming the soundtrack of entire seasons.
 
-After seeing how outliers in the boxplot grew more extreme over time, I wanted to dig deeper:
-Which songs dominated the longest, and how has that changed across decades?
+After seeing how outliers in the boxplot grew more extreme over time, we wanted to dig deeper: which songs dominated the longest, and how has that changed across decades?
 
-To answer that, I looked at two things:
-- The top 10 longest-running #1 songs of all time
-- The single longest-running #1 song from each decade
+To answer that, we looked at two things:
+
+1.  The top 10 longest-running #1 songs of all time; and
+
+2.  The single longest-running #1 song from each decade
 
 ```{r}
 # Identify marathon hits (10+ weeks)
@@ -151,21 +134,25 @@ marathon_hits_only <- marathon_hits |>
   filter(type == "marathon")
 ```
 
+Below are the top 10 longest-running #1 songs of all time, with the highest number of weeks being 19.
+
 ```{r}
 top10_alltime
 ```
+
+Below are the longest-running #1 songs for every decade.
 
 ```{r}
 longest_per_decade
 ```
 
-The biggest takeaway isn’t that all long-running hits are modern—it’s that the ceiling jumped dramatically in the streaming era.
+The biggest takeaway isn’t that all long-running hits are modern, it’s that the ceiling jumped dramatically in the streaming era.
 
-Earlier decades topped out around 10 weeks. The 1990s broke through that barrier, and the 2010s–2020s shattered it.
+Earlier decades topped out around 10 weeks. The 1990s broke through that barrier with 16 weeks, and the 2010s–2020s shattered it with close to 20 weeks.
 
-Streaming didn’t just reshape music consumption—it supercharged chart dominance.
+Streaming didn’t just reshape music consumption - it supercharged chart dominance.
 
-After identifying the marathon hits (songs staying at #1 for 10+ weeks), I also wondered whether they tended to break through at certain times of the year. Do dominant songs arrive with the summer heat? The back-to-school lull? The holiday season?
+After identifying the marathon hits (songs staying at #1 for 10+ weeks), we also wondered whether they tended to break through at certain times of the year. Do dominant songs arrive with the summer heat? The back-to-school lull? The holiday season?
 
 ```{r}
 # Plot 2: Bar Chart of Marathon Hits by Month
@@ -187,22 +174,19 @@ ggplot(marathon_month_counts, aes(x = month, y = n)) +
 
 Surprisingly, the seasonality story isn’t as predictable as you’d think:
 
-- April and November lead the pack with 6 marathon hits each
+-   April and November lead the pack with 6 marathon hits each
 
-- November kind of makes sense—holiday listening often propels songs into the new year
+-   November kind of makes sense; holiday listening often propels songs into the new year
 
-- April is the real wildcard with no obvious cultural explanation
+-   April is the real wildcard with no obvious cultural explanation
 
-- December, the peak holiday season, produced only 3 marathon hits
+-   December, the peak holiday season, produced only 3 marathon hits
 
-And overall?
-- There’s no single “magic month.” Dominance depends more on cultural moments and viral momentum than the calendar.
-
-
+Overall, there’s no single “magic month.” Dominance depends more on cultural moments and viral momentum than the calendar.
 
 ### One Week Wonders Across Decades
 
-While looking and investigating marathons which is a small proportion of the data thought we would be able to learn more from looking into one week wonder where a song charted only for one week. Wanted to first look what percentage of the songs only charted for one week.
+Since marathon hits only make up a small proportion of the data, we thought we would be able to learn more from looking into one-week wonders - songs that were only #1 for one week. First, we wanted to look at what percentage of the songs were so-called "one-week wonders".
 
 ```{r}
 # Calculate percentage of #1 songs with only 1 week at the top
@@ -216,7 +200,9 @@ one_week_pct <- weeks_by_song |>
 one_week_pct
 ```
 
-That means roughly 1 in 3 #1 hits were “one-week wonders,” topping the chart briefly before being replaced.
+That means roughly 1 in 3 #1 hits were “one-week wonders”, topping the chart briefly before being replaced.
+
+What about per decade?
 
 ```{r}
 # Compute summary per decade
@@ -277,22 +263,16 @@ p_year <- ggplot(one_week_by_year, aes(x = year, y = pct_one_week)) +
 
 p_decade
 ```
+
 ```{r}
 p_year
 ```
 
-The 2020s represent unprecedented chart volatility - the highest one-week wonder rate in history, likely due to:
-- Streaming algorithms favoring new releases
-- Viral TikTok trends creating rapid chart movements
-- Increased competition and shorter attention spans
+From the charts above, we can deduce that the 2020s have the highest one-week wonder rate in history, likely due to streaming algorithms favoring new releases, viral TikTok trends creating rapid chart movements, increased competition and shorter attention spans.
 
-Interesting because I would have assumed that due to the increased marathon runners in the streaming era we would have less one week wonders in 2020s. We see that in some years like 2002, 2014 with no one week wonders.
+This is interesting because we would have assumed that, due to the increased marathon runners in the streaming era, we would have less one-week wonders in the 2020s. We see this pattern emerge in some years like 2002 and 2014 with none such one-week wonders at all, in addition to the lull in one-week wonders around the 1990s to mid 2010s. However, it is unclear why we are suddenly seeing a surge after 2014.
 
-The mid-1970s mystery: Why did 1975-1977 have such extreme turnover, even higher than today? This predates streaming and warrants investigation.
-
-The 1980s-1990s stability: This era had the most "dominant" #1 hits - songs could hold the top spot for many consecutive weeks (think Whitney Houston, Boyz II Men).
-
-Cyclical patterns: The U-shape suggests chart dynamics aren't linear - they respond to cultural and technological shifts in waves.
+Overall, chart dynamics aren't linear - they respond to cultural and technological shifts in waves.
 
 ------------------------------------------------------------------------
 
@@ -302,18 +282,13 @@ The world looks different now in 2025 than it did in 1950, and so did the music 
 
 ### Instrumentation and Sound Evolution
 
-```{r, results=FALSE}
+With rapid shifts in technological advancement, there is no doubt that songs now are being produced using different methods of instrumentation than in the decades past. We explore this evolution of sound by creating PCA biplots that will help us compare variables like `bpm`, `energy`, `danceability`, `happiness`, etc.
+
+```{r}
 song_vars <- billboard_updated |>
   select(song, decade, bpm, energy, danceability, happiness, loudness_d_b,
          acousticness, length_sec, instrumental_length_sec)
 song_vars <- song_vars |> drop_na()
-
-pca_all <- prcomp(song_vars[, 3:ncol(song_vars)], scale. = TRUE)
-round(pca_all$rotation, 5)
-pc_scores_all <- pca_all$x
-rownames(pc_scores_all) <- song_vars$song 
-pca_summary <- summary(pca_all)
-round(rbind(pc_scores_all, NA, pca_summary$importance), 5)
 ```
 
 ```{r}
@@ -339,17 +314,17 @@ draw_biplot(song_vars_21st, label_size = 3, point_size = 0.2, point_color = "lig
   ggtitle("Biplot: Songs From 2000 Onward")
 ```
 
-Earlier decades show a tightly linked cluster of danceability, energy, and loudness—a sign that upbeat songs tended to be uniformly bright, energetic, and dance-friendly. Think disco, classic pop, 80s synths, and power ballads. BPM and happiness also aligned, suggesting that “fast = cheerful” was a common formula for a hit. Acousticness sat far from the energy cluster—acoustic songs rarely overlapped with dance-heavy tracks.
+Earlier decades show a tightly linked cluster of danceability, energy, and loudness - a sign that upbeat songs tended to be uniformly bright, energetic, and dance-friendly (think disco, classic pop, 80s synths, and power ballads). BPM and happiness were also closely aligned, suggesting that “fast = cheerful” was a common formula for a hit. Acousticness sat far from the energy/danceability cluster, which suggests that acoustic songs rarely overlapped with dance-heavy tracks.
 
 This reflects a time when genres were more distinct, and production styles followed clearer rules.
 
-Post 2000s, danceability no longer correlates with acousticness—modern songs blend “dance-friendly” rhythms with acoustic textures (think Ed Sheeran or folk-pop crossovers). BPM and happiness no longer travel together; a fast song doesn’t have to feel bright or positive (hello, hyperpop sadness or moody EDM).
+Post 2000s, danceability no longer correlates with acousticness, suggesting that modern songs tend to blend “dance-friendly” rhythms with acoustic textures (think Ed Sheeran or folk-pop crossovers). BPM and happiness no longer travel together, which means a fast song doesn’t have to feel bright or positive (hyperpop sadness or moody EDM).
 
 Put simply: modern hits don’t follow the old blueprints anymore. Genre fluidity, bedroom pop production, and algorithm-driven trends allow features to recombine in ways that were rare before 2000.
 
 ### Evolution of Genre Across Decades
 
-When I think 1960s-70s, I think of rock as the defining music genre of that time. When I think 2010-2020s, I think of indie, hip-hop, and pop. But will this reflect in the Billboard Hot 100? To test my hypothesis, I create a heatmap of the proportion of genres of #1 songs for each decade. Since songs could have more than one genre, I define the proportion of a genre as how many times a genre appeared in that decade divided by the total number of songs that appeared in that decade.
+When we think 1960s-70s, rock immediately comes to mind as the defining music genre of that time. When we think 2010-2020s, we think of indie, hip-hop, and pop. But will this reflect in the Billboard Hot 100? To test our hypothesis, we create a heatmap of the proportion of genres of #1 songs for each decade. Since songs could have more than one genre, we define the proportion of a genre as how many times a genre appeared in that decade divided by the total number of songs that appeared in that decade.
 
 ```{r}
 # Genre representation
@@ -392,7 +367,6 @@ heatmap_genre <- heatmap_genre |>
 ggplot(heatmap_genre, aes(x = decade, y = genre_sep, fill = proportion)) +
   geom_tile() +
   scale_fill_gradient(low="lightsteelblue1", high = "royalblue4", name = "Genre Proportion") +
-  # scale_fill_distiller(palette = "Blues", direction = 1, name = "Genre Proportion") +
   scale_x_continuous(breaks=unique(heatmap_genre$decade)) +
   labs(
     title = "Heatmap of Genre per Decade",
@@ -406,7 +380,7 @@ The heat map above shows us that Pop has always been a popular (haha) genre, whi
 
 ### Solo/Duo/Group Artists vs Featured Collaborations
 
-Just like I picture the 60s and 70s to be the defining decades for Rock, I also picture the 60s and 70s to be the defining decades for bands. Names like "The Beatles" and "Fleetwood Mac" - both bands - come to mind as prominent artists of that era, whereas names like "Taylor Swift" and "Ariana Grande" - solo artists - come to mind as prominent artists of the era we are in right now. To test this hypothesis, I create a mosaic plot that shows us the distribution of artist structure (group, duo, solo) and featured collaborations per decade.
+Just like we picture the 60s and 70s to be the defining decades for Rock, we also picture the 60s and 70s to be the defining decades for bands. Names like "The Beatles" and "Fleetwood Mac" - both bands - come to mind as prominent artists of that era, whereas names like "Taylor Swift" and "Ariana Grande" - solo artists - come to mind as prominent artists of the era we are in right now. To test this hypothesis, we create a mosaic plot that shows us the distribution of artist structure (group, duo, solo) and featured collaborations per decade.
 
 ```{r}
 # Solo artists vs groups vs collaborations
@@ -472,7 +446,7 @@ The songs we listen to might sound different now, but could it be because of the
 
 ### Top Artists Over the Years
 
-Our data spans 1950 to 2025, so I am interested in looking at the top artists of all time (artists that have the most songs at #1 in the Billboard Hot 100) and what years they were popular. For instance, were The Beatles only popular for a certain time or do they have songs that are #1 even now?
+Our data spans 1950 to 2025, so we are interested in looking at the top artists of all time (artists that have the most songs at #1 in the Billboard Hot 100) and what years they were popular. For instance, were The Beatles only popular for a certain time or do they have songs that are #1 even now?
 
 ```{r}
 # Get top 20 artists
@@ -523,7 +497,7 @@ The chart above takes the top 20 artists of all time and marks the first year an
 
 ### Are #1 Artists & Songwriters Becoming More Diverse?
 
-With more and more opportunities being presented to artists of color and women artists over the years, I would imagine there being a stark difference between the gender and race distribution of #1 artists now than in 1950. I test this hypothesis by creating two mosaic plots exploring the effect of gender and race on era (defined as before 1990 and after 1990).
+With more and more opportunities being presented to artists of color and women artists over the years, we would imagine there being a stark difference between the gender and race distribution of #1 artists now than in 1950. We test this hypothesis by creating two mosaic plots exploring the effect of gender and race on era (defined as before 1990 and after 1990).
 
 ```{r}
 # Artist Gender and Race
@@ -567,7 +541,7 @@ vcd::mosaic(~era_detailed + gender + race,
        ))
 ```
 
-The mosaic plot above confirms my hypothesis and shows us that, before 1990, "All Male" seemed to take up the biggest proportion of artists, with more than 2/3 of these male artists being white. "All Female" and "Mixed Gender" artists had similar proportions, but both were still overwhelmingly white.
+The mosaic plot above confirms our hypothesis and shows us that, before 1990, "All Male" seemed to take up the biggest proportion of artists, with more than 2/3 of these male artists being white. "All Female" and "Mixed Gender" artists had similar proportions, but both were still overwhelmingly white.
 
 After 1990, it still looks like "All Male" artists dominate #1 compared to "All Female" and "Mixed Gender" artists, but the distribution of race makes a dramatic 180. Now, half of the male artists are not white, compared to before 1990 where not white artists only made up less than 1/3 of all male artists. This is a huge improvement for the distribution of race in our #1 artists!
 
